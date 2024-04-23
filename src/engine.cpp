@@ -3,6 +3,8 @@
 #include "reader.hpp"
 #include "stack.hpp"
 
+using namespace polylin;
+
 int main(int argc, const char* argv[]) {
   if (argc < 2) return -1;
   HistoryReader reader;

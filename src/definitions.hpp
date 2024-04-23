@@ -1,6 +1,8 @@
 #pragma once
 #include <unordered_set>
 
+namespace polylin {
+
 enum Method {
   PUSH,
   POP,
@@ -12,8 +14,29 @@ enum Method {
   PEEK_FRONT,
   PUSH_BACK,
   POP_BACK,
-  PEEK_BACK
+  PEEK_BACK,
+  INSERT,
+  POLL,
 };
+
+Method getMethodFromStr(std::string str) {
+  if (str == "push") return Method::PUSH;
+  if (str == "pop") return Method::POP;
+  if (str == "peek") return Method::PEEK;
+  if (str == "push_front") return Method::PUSH_FRONT;
+  if (str == "pop_front") return Method::POP_FRONT;
+  if (str == "peek_front") return Method::PEEK_FRONT;
+  if (str == "push_back") return Method::PUSH_BACK;
+  if (str == "pop_back") return Method::POP_BACK;
+  if (str == "peek_back") return Method::PEEK_BACK;
+  if (str == "enq") return Method::ENQ;
+  if (str == "deq") return Method::DEQ;
+  if (str == "insert") return Method::INSERT;
+  if (str == "poll")
+    return Method::POLL;
+  else
+    throw std::invalid_argument("Unknown method: " + str);
+}
 
 typedef int value_type;
 typedef int time_type;
@@ -31,6 +54,8 @@ struct Operation {
   time_type startTime;
   time_type endTime;
 
+  Operation() = delete;
+
   Operation(proc_type proc, Method method, value_type value,
             time_type startTime, time_type endTime)
       : method(method), value(value), startTime(startTime), endTime(endTime) {
@@ -44,12 +69,21 @@ struct Operation {
         value(o.value),
         startTime(o.startTime),
         endTime(o.endTime){};
-};
 
-template <>
-struct std::hash<Operation> {
-  std::size_t operator()(const Operation& o) const {
-    return std::hash<id_type>()(o.id);
+  Operation(const Operation&& o)
+      : id(o.id),
+        method(o.method),
+        value(o.value),
+        startTime(o.startTime),
+        endTime(o.endTime){};
+
+  Operation& operator=(const Operation& o) {
+    id = o.id;
+    method = o.method;
+    value = o.value;
+    startTime = o.startTime;
+    endTime = o.endTime;
+    return *this;
   }
 };
 
@@ -58,3 +92,12 @@ bool operator<(const Operation& a, const Operation& b) { return a.id < b.id; }
 bool operator==(const Operation& a, const Operation& b) { return a.id == b.id; }
 
 typedef std::unordered_set<Operation> History;
+
+}  // namespace polylin
+
+template <>
+struct std::hash<polylin::Operation> {
+  std::size_t operator()(const polylin::Operation& o) const {
+    return std::hash<polylin::id_type>()(o.id);
+  }
+};

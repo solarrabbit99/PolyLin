@@ -6,6 +6,8 @@
 #include "definitions.hpp"
 #include "util.hpp"
 
+namespace polylin {
+
 class HistoryReader {
  public:
   History readFile(const std::string& path) {
@@ -32,3 +34,5 @@ class HistoryReader {
     return hist;
   }
 };
+
+}  // namespace polylin

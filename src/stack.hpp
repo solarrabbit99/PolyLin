@@ -4,6 +4,8 @@
 
 #include "definitions.hpp"
 
+namespace polylin {
+
 // Returns `false` if there is value where `POP` methods > `PUSH` methods
 bool stackExtend(History& hist) {
   time_type maxTime = MIN_TIME;
@@ -105,3 +107,5 @@ bool stackDistValLin(History& hist) {
   }
   return true;
 }
+
+}  // namespace polylin
