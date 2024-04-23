@@ -28,9 +28,9 @@ bool stackExtend(History& hist) {
 // value has no `PUSH` operation)
 bool stackTune(History& hist) {
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
-  std::unordered_map<value_type, Operation&> pushOp, popOp;
+  std::unordered_map<value_type, Operation> pushOp, popOp;
   for (const Operation& o : hist) {
-    if (minResTime.count(o.value)) {
+    if (!minResTime.count(o.value)) {
       minResTime[o.value] = o.endTime;
       maxInvTime[o.value] = o.startTime;
     } else {
@@ -38,16 +38,22 @@ bool stackTune(History& hist) {
       maxInvTime[o.value] = std::max(maxInvTime[o.value], o.startTime);
     }
 
-    if (o.method == Method::PUSH) pushOp[o.value] = o;
-    if (o.method == Method::POP) popOp[o.value] = o;
+    if (o.method == Method::PUSH) pushOp.emplace(o.value, o);
+    if (o.method == Method::POP) popOp.emplace(o.value, o);
   }
   for (const auto& [value, resTime] : minResTime) {
     if (!pushOp.count(value)) return false;
-    pushOp[value].endTime = resTime;
-    popOp[value].startTime = maxInvTime[value];
-    if (pushOp[value].startTime >= pushOp[value].endTime ||
-        popOp[value].startTime >= popOp[value].endTime)
+    Operation& valPushOp = pushOp.at(value);
+    Operation& valPopOp = popOp.at(value);
+    valPushOp.endTime = resTime;
+    valPopOp.startTime = maxInvTime[value];
+    if (valPushOp.startTime >= valPushOp.endTime ||
+        valPopOp.startTime >= valPopOp.endTime)
       return false;
+    hist.erase(valPushOp);
+    hist.erase(valPopOp);
+    hist.emplace(valPushOp);
+    hist.emplace(valPopOp);
   }
   return true;
 }
@@ -57,8 +63,8 @@ bool stackTune(History& hist) {
 bool stackDistValLin(History& hist) {
   if (!stackExtend(hist) || !stackTune(hist)) return false;
   while (hist.size()) {
-    std::vector<std::tuple<time_type, bool, const Operation&>> events;
-    std::unordered_map<value_type, std::vector<const Operation&>> opByVal;
+    std::vector<std::tuple<time_type, bool, Operation>> events;
+    std::unordered_map<value_type, std::vector<Operation>> opByVal;
     for (const Operation& o : hist) {
       events.emplace_back(o.startTime, true, o);
       events.emplace_back(o.endTime, false, o);

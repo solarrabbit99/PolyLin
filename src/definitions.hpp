@@ -53,4 +53,8 @@ struct std::hash<Operation> {
   }
 };
 
+bool operator<(const Operation& a, const Operation& b) { return a.id < b.id; }
+
+bool operator==(const Operation& a, const Operation& b) { return a.id == b.id; }
+
 typedef std::unordered_set<Operation> History;
