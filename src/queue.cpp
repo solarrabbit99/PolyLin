@@ -81,8 +81,14 @@ bool QueueLin::distVal(History& hist) {
           endedEnqOp.clear();
         } else {
           runningOtherOp[op.value]++;
-          for (auto& [val, ops] : endedOtherOp)
-            if (val != op.value) ops = 0;
+          auto iter = endedOtherOp.begin();
+          auto endIter = endedOtherOp.end();
+          while (iter != endIter) {
+            if (iter->first != op.value)
+              iter = endedOtherOp.erase(iter);
+            else
+              ++iter;
+          }
         }
       } else {
         if (op.method == Method::ENQ) {
