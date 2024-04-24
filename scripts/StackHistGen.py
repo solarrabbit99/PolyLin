@@ -5,8 +5,9 @@ from collections import deque
 from typing import TextIO
 import random
 
-RAND_WIDTH = 20
+MAX_RADIUS = 1000
 MAX_STACK_SIZE = 100
+MAX_TIME_DELTA = 10
 
 def randInterval(time: int, width: int):
   a = time - random.randint(0, width)
@@ -21,9 +22,10 @@ def toOpStr(proc: int, method: int, value: int, start: int, end: int):
 def genLinHist(size: int, outFile: TextIO):
   stack = deque()
   time = 0
-  while time < size:
-    time += 1
-    a, b = randInterval(time, RAND_WIDTH)
+  while size:
+    size -= 1
+    time += random.randint(1, MAX_TIME_DELTA)
+    a, b = randInterval(time, MAX_RADIUS)
     method = random.randint(0, 2)
 
     if len(stack) == MAX_STACK_SIZE:

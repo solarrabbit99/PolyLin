@@ -19,7 +19,7 @@ enum Method {
   POLL,
 };
 
-Method getMethodFromStr(std::string str) {
+inline Method getMethodFromStr(std::string str) {
   if (str == "push") return Method::PUSH;
   if (str == "pop") return Method::POP;
   if (str == "peek") return Method::PEEK;
@@ -87,9 +87,13 @@ struct Operation {
   }
 };
 
-bool operator<(const Operation& a, const Operation& b) { return a.id < b.id; }
+inline bool operator<(const Operation& a, const Operation& b) {
+  return a.id < b.id;
+}
 
-bool operator==(const Operation& a, const Operation& b) { return a.id == b.id; }
+inline bool operator==(const Operation& a, const Operation& b) {
+  return a.id == b.id;
+}
 
 typedef std::unordered_set<Operation> History;
 
