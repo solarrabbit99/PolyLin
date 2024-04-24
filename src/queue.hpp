@@ -8,7 +8,7 @@ namespace polylin {
 
 class QueueLin {
  public:
-  // Assumption: at most one `ENQ`, valid stack operations.
+  // Assumption: at most one `ENQ`, valid queue operations.
   // Time complexity: O(n^2)
   bool distVal(History& hist);
 

@@ -31,6 +31,22 @@ def genLinHist(size: int, outFile: TextIO):
     if method == 2:
       queue.popleft()
 
+def genNonLinHist(size: int, outFile: TextIO):
+  if size < 4:
+    value = 0
+    while size:
+      size -= 1
+      value += 1
+      a, b = randInterval(0, MAX_RADIUS)
+      method = random.randint(1, 2)
+      outFile.write(toOpStr(0, method, value, a, b))
+  else:
+    outFile.write(toOpStr(0, 0, -2, 0, 1))
+    outFile.write(toOpStr(0, 0, -1, 1, 2))
+    outFile.write(toOpStr(0, 2, -1, 2, 3))
+    outFile.write(toOpStr(0, 2, -2, 3, 4))
+    genLinHist(size - 4, outFile)
+
 def main():
   parser = argparse.ArgumentParser('QueueHistGen')
   parser.add_argument('-l', action='store_true', help='whether the generated history should be linearizable')
@@ -44,6 +60,8 @@ def main():
     f.write('# queue\n')
     if isLin:
       genLinHist(size, f)
+    else:
+      genNonLinHist(size, f)
 
 if __name__ == '__main__':
   main()

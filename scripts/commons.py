@@ -1,8 +1,8 @@
 import random
 
-MAX_RADIUS = 1000
+MAX_RADIUS = 20
 MAX_OBJECT_SIZE = 100
-MAX_TIME_DELTA = 10
+MAX_TIME_DELTA = 50
 
 def randInterval(time: int, width: int):
   a = time - random.randint(0, width)
