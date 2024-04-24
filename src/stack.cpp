@@ -2,7 +2,7 @@
 
 using namespace polylin;
 
-bool StackLin::stackExtend(History& hist) {
+bool StackLin::extend(History& hist) {
   time_type maxTime = MIN_TIME;
   proc_type maxProc = 0;
   std::unordered_map<value_type, int> pushPopDelta;
@@ -22,7 +22,7 @@ bool StackLin::stackExtend(History& hist) {
   return true;
 }
 
-bool StackLin::stackTune(History& hist) {
+bool StackLin::tune(History& hist) {
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> pushOp, popOp;
   for (const Operation& o : hist) {
@@ -61,12 +61,12 @@ bool StackLin::stackTune(History& hist) {
   return true;
 }
 
-bool StackLin::stackDistValLin(History& hist) {
-  if (!stackExtend(hist)) return false;
+bool StackLin::distVal(History& hist) {
+  if (!extend(hist)) return false;
 
   for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
 
-  if (!stackTune(hist)) return false;
+  if (!tune(hist)) return false;
 
   while (hist.size()) {
     std::vector<std::tuple<time_type, bool, Operation>> events;

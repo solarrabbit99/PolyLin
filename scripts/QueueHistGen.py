@@ -7,12 +7,12 @@ from commons import MAX_RADIUS, MAX_OBJECT_SIZE, MAX_TIME_DELTA, randInterval
 import random
 
 def toOpStr(proc: int, method: int, value: int, start: int, end: int):
-  switcher = ['push', 'peek', 'pop']
+  switcher = ['enq', 'peek', 'deq']
   methodStr = switcher[method]
   return ' '.join([str(proc), methodStr, str(value), str(start), str(end)]) + '\n'
 
 def genLinHist(size: int, outFile: TextIO):
-  stack = deque()
+  queue = deque()
   time = 0
   while size:
     size -= 1
@@ -20,19 +20,19 @@ def genLinHist(size: int, outFile: TextIO):
     a, b = randInterval(time, MAX_RADIUS)
     method = random.randint(0, 2)
 
-    if len(stack) == MAX_OBJECT_SIZE:
+    if len(queue) == MAX_OBJECT_SIZE:
       method = random.randint(1, 2)
-    elif not len(stack):
+    elif not len(queue):
       method = 0
 
     if method == 0:
-      stack.append(time)
-    outFile.write(toOpStr(time, method, stack[-1], a, b))
+      queue.append(time)
+    outFile.write(toOpStr(time, method, queue[0 if method else -1], a, b))
     if method == 2:
-      stack.pop()
+      queue.popleft()
 
 def main():
-  parser = argparse.ArgumentParser('StackHistGen')
+  parser = argparse.ArgumentParser('QueueHistGen')
   parser.add_argument('-l', action='store_true', help='whether the generated history should be linearizable')
   parser.add_argument('output', help='target file path')
   parser.add_argument('n', help='number of operations')
@@ -41,7 +41,7 @@ def main():
   outPath = args.output
   size = int(args.n)
   with open(outPath, 'w') as f:
-    f.write('# stack\n')
+    f.write('# queue\n')
     if isLin:
       genLinHist(size, f)
 
