@@ -1,6 +1,10 @@
 #include "queue.hpp"
 
+#include <functional>
 #include <iostream>
+#include <optional>
+#include <unordered_map>
+#include <vector>
 
 using namespace polylin;
 
@@ -59,54 +63,87 @@ bool QueueLin::tune(History& hist) {
 }
 
 bool QueueLin::distVal(History& hist) {
-  if (!extend(hist)) return false;
+  if (!extend(hist) || !tune(hist)) return false;
 
-  for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
-
-  if (!tune(hist)) return false;
-
-  while (hist.size()) {
-    std::vector<std::tuple<time_type, bool, Operation>> events;
-    for (const Operation& o : hist) {
-      events.emplace_back(o.startTime, true, o);
-      events.emplace_back(o.endTime, false, o);
+  std::unordered_map<value_type, size_t> opByVal;
+  std::vector<std::tuple<time_type, bool, Operation>> enqEvents, otherEvents;
+  for (const Operation& o : hist) {
+    ++opByVal[o.value];
+    if (o.method == Method::ENQ) {
+      enqEvents.emplace_back(o.startTime, true, o);
+      enqEvents.emplace_back(o.endTime, false, o);
+    } else {
+      otherEvents.emplace_back(o.startTime, true, o);
+      otherEvents.emplace_back(o.endTime, false, o);
     }
-    std::sort(events.begin(), events.end());
-    std::unordered_set<value_type> runningEnqOp, endedEnqOp;
-    std::unordered_map<value_type, size_t> runningOtherOp, endedOtherOp;
-    for (const auto& [time, isInv, op] : events) {
-      if (isInv) {
-        if (op.method == Method::ENQ) {
-          runningEnqOp.insert(op.value);
-          endedEnqOp.clear();
-        } else {
-          runningOtherOp[op.value]++;
-          auto iter = endedOtherOp.begin();
-          auto endIter = endedOtherOp.end();
-          while (iter != endIter) {
-            if (iter->first != op.value)
-              iter = endedOtherOp.erase(iter);
-            else
-              ++iter;
-          }
-        }
-      } else {
-        if (op.method == Method::ENQ) {
-          runningEnqOp.erase(op.value);
-          endedEnqOp.insert(op.value);
-        } else {
-          runningOtherOp[op.value]--;
-          endedOtherOp[op.value]++;
-        }
-      }
-    }
-    bool hasRem = false;
-    for (auto& [value, cnt] : endedOtherOp)
-      if (cnt + endedEnqOp.count(value) == opByVal[value].size()) {
-        hasRem = true;
-        for (const Operation& op : opByVal[value]) hist.erase(op);
-      }
-    if (!hasRem) return false;
   }
+  std::sort(enqEvents.begin(), enqEvents.end());
+  std::sort(otherEvents.begin(), otherEvents.end());
+
+  std::optional<value_type> lastInvVal;
+  std::unordered_set<value_type> pendingVals, confirmedVals;
+  std::unordered_map<value_type, size_t> runningOtherOp;
+
+  auto enqIter = enqEvents.rbegin();
+  std::function<void()> scanEnqEvents = [&]() {
+    while (enqIter != enqEvents.rend()) {
+      const auto& [_, isInv, op] = *enqIter;
+      if (confirmedVals.count(op.value)) {
+        ++enqIter;
+        continue;
+      }
+
+      if (isInv) break;
+
+      if (pendingVals.count(op.value)) {
+        pendingVals.erase(op.value);
+        confirmedVals.insert(op.value);
+      } else {
+        pendingVals.insert(op.value);
+      }
+
+      ++enqIter;
+    }
+  };
+
+  for (auto iter = otherEvents.rbegin(); iter != otherEvents.rend(); ++iter) {
+    const auto& [_, isInv, op] = *iter;
+    if (confirmedVals.count(op.value)) continue;
+
+    if (isInv) {
+      if (lastInvVal && lastInvVal != op.value) {
+        scanEnqEvents();
+        if (!confirmedVals.count(*lastInvVal) && !confirmedVals.count(op.value))
+          return false;
+
+        if (!confirmedVals.count(op.value)) {
+          if (runningOtherOp[op.value] + 1 == opByVal[op.value]) return false;
+
+          lastInvVal = op.value;
+        } else if (confirmedVals.count(*lastInvVal))
+          lastInvVal.reset();
+      } else {
+        lastInvVal = op.value;
+
+        if (runningOtherOp[op.value] + 1 == opByVal[op.value]) {
+          scanEnqEvents();
+          if (!confirmedVals.count(op.value)) return false;
+
+          lastInvVal.reset();
+        }
+      }
+    } else {
+      ++runningOtherOp[op.value];
+      if (runningOtherOp[op.value] + 1 == opByVal[op.value]) {
+        if (pendingVals.count(op.value)) {
+          pendingVals.erase(op.value);
+          confirmedVals.insert(op.value);
+        } else {
+          pendingVals.insert(op.value);
+        }
+      }
+    }
+  }
+
   return true;
 }

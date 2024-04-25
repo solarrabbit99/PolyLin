@@ -1,6 +1,4 @@
 #pragma once
-#include <unordered_map>
-#include <vector>
 
 #include "definitions.hpp"
 
@@ -9,7 +7,7 @@ namespace polylin {
 class QueueLin {
  public:
   // Assumption: at most one `ENQ`, valid queue operations.
-  // Time complexity: O(n^2)
+  // Time complexity: O(n log n)
   bool distVal(History& hist);
 
  private:
@@ -19,8 +17,6 @@ class QueueLin {
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `ENQ` operation)
   bool tune(History& hist);
-
-  std::unordered_map<value_type, std::vector<Operation>> opByVal;
 };
 
 }  // namespace polylin
