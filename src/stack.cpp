@@ -68,17 +68,22 @@ bool StackLin::distVal(History& hist) {
 
   if (!tune(hist)) return false;
 
-  while (hist.size()) {
-    std::vector<std::tuple<time_type, bool, Operation>> events;
-    for (const Operation& o : hist) {
-      events.emplace_back(o.startTime, true, o);
-      events.emplace_back(o.endTime, false, o);
-    }
-    std::sort(events.begin(), events.end());
+  std::unordered_set<value_type> removedVals;
+  std::vector<std::tuple<time_type, bool, Operation>> events;
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+
+  while (removedVals.size() < opByVal.size()) {
     std::unordered_map<value_type, size_t> freeOp;
     std::unordered_map<value_type, std::unordered_set<id_type>> runningOp;
     std::unordered_set<value_type> critVal;
+
     for (const auto& [time, isInv, op] : events) {
+      if (removedVals.count(op.value)) continue;
+
       if (isInv) {
         runningOp[op.value].emplace(op.id);
         if (op.method == Method::POP) critVal.erase(op.value);
@@ -86,25 +91,26 @@ bool StackLin::distVal(History& hist) {
         runningOp[op.value].erase(op.id);
         if (op.method == Method::PUSH) critVal.insert(op.value);
       }
+
       if (critVal.empty()) {
-        for (auto& [value, set] : runningOp) {
-          freeOp[value] += set.size();
-          set.clear();
-        }
+        for (auto& [value, set] : runningOp) freeOp[value] += set.size();
+        runningOp.clear();
       }
       if (critVal.size() == 1) {
         value_type value = *critVal.begin();
         freeOp[value] += runningOp[value].size();
-        runningOp[value].clear();
+        runningOp.erase(value);
       }
     }
+
     bool hasRem = false;
     for (auto& [value, cnt] : freeOp)
       if (cnt == opByVal[value].size()) {
         hasRem = true;
-        for (const Operation& op : opByVal[value]) hist.erase(op);
+        removedVals.insert(value);
       }
     if (!hasRem) return false;
   }
+
   return true;
 }
