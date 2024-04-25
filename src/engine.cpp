@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "priorityqueue.hpp"
 #include "queue.hpp"
 #include "reader.hpp"
 #include "stack.hpp"
@@ -16,4 +17,6 @@ int main(int argc, const char* argv[]) {
     std::cout << StackLin().distVal(hist) << std::endl;
   else if (histType == "queue")
     std::cout << QueueLin().distVal(hist) << std::endl;
+  else if (histType == "pqueue")
+    std::cout << PriorityQueueLin().distVal(hist) << std::endl;
 }
