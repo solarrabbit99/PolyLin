@@ -8,9 +8,9 @@ using namespace polylin;
 
 int main(int argc, const char* argv[]) {
   if (argc < 2) return -1;
-  HistoryReader reader;
-  History hist = reader.getHist(argv[1]);
-  std::string histType = reader.getHistTypeStr(argv[1]);
+  HistoryReader reader(argv[1]);
+  History hist = reader.getHist();
+  std::string histType = reader.getHistTypeStr();
 
   if (histType == "stack")
     std::cout << StackLin().distVal(hist) << std::endl;

@@ -10,7 +10,9 @@ namespace polylin {
 
 class HistoryReader {
  public:
-  History getHist(const std::string& path) {
+  HistoryReader(const std::string& path) : path(path) {}
+
+  History getHist() {
     std::ifstream f(path);
     std::string line;
     History hist;
@@ -34,13 +36,16 @@ class HistoryReader {
     return hist;
   }
 
-  std::string getHistTypeStr(const std::string& path) {
+  std::string getHistTypeStr() {
     std::ifstream f(path);
     std::string line;
     if (!std::getline(f, line) || line[0] != '#') return "";
 
     return trim(line.substr(1));
   }
+
+ private:
+  const std::string path;
 };
 
 }  // namespace polylin

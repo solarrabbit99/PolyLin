@@ -1,7 +1,6 @@
 #include "queue.hpp"
 
 #include <functional>
-#include <iostream>
 #include <optional>
 #include <unordered_map>
 #include <vector>
