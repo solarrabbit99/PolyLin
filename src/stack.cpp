@@ -1,5 +1,7 @@
 #include "stack.hpp"
 
+#include <algorithm>
+
 using namespace polylin;
 
 bool StackLin::extend(History& hist) {

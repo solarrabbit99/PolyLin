@@ -1,5 +1,6 @@
 #include "priorityqueue.hpp"
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <unordered_map>

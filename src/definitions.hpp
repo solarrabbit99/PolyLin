@@ -1,4 +1,7 @@
 #pragma once
+#include <limits>
+#include <stdexcept>
+#include <string>
 #include <unordered_set>
 
 namespace polylin {
@@ -43,8 +46,8 @@ typedef int time_type;
 typedef unsigned int proc_type;
 typedef unsigned int id_type;
 
-#define MIN_TIME INT32_MIN
-#define MAX_TIME INT32_MAX
+#define MIN_TIME std::numeric_limits<time_type>::lowest()
+#define MAX_TIME std::numeric_limits<time_type>::max()
 
 struct Operation {
   id_type id;
