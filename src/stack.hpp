@@ -20,6 +20,9 @@ class StackLin {
   // value has no `PUSH` operation)
   bool tune(History& hist);
 
+  // Remove empty peek and pop operations
+  bool removeEmptyOps(History& hist);
+
   std::unordered_map<value_type, std::vector<Operation>> opByVal;
 };
 

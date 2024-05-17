@@ -12,6 +12,8 @@ bool QueueLin::extend(History& hist) {
   proc_type maxProc = 0;
   std::unordered_map<value_type, int> enqDeqDelta;
   for (const Operation& o : hist) {
+    if (o.value == EMPTY_VALUE) continue;
+
     if (o.method == Method::ENQ)
       enqDeqDelta[o.value]++;
     else if (o.method == Method::DEQ)
@@ -31,6 +33,8 @@ bool QueueLin::tune(History& hist) {
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> enqOp, deqOp;
   for (const Operation& o : hist) {
+    if (o.value == EMPTY_VALUE) continue;
+
     if (!minResTime.count(o.value)) {
       minResTime[o.value] = o.endTime;
       maxInvTime[o.value] = o.startTime;
@@ -61,8 +65,47 @@ bool QueueLin::tune(History& hist) {
   return true;
 }
 
+bool QueueLin::removeEmptyOps(History& hist) {
+  std::vector<std::tuple<time_type, bool, Operation>> events;
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+
+  std::unordered_set<id_type> runningEmptyOp;
+  std::unordered_set<value_type> critVal, endedVal;
+
+  for (const auto& [time, isInv, op] : events) {
+    if (op.value != EMPTY_VALUE) {
+      if (isInv) {
+        if (op.method == Method::DEQ) {
+          critVal.erase(op.value);
+          endedVal.insert(op.value);
+        }
+      } else {
+        if (op.method == Method::ENQ && !endedVal.count(op.value))
+          critVal.insert(op.value);
+      }
+    }
+
+    if (critVal.empty()) runningEmptyOp.clear();
+
+    if (op.value == EMPTY_VALUE) {
+      if (isInv)
+        runningEmptyOp.insert(op.id);
+      else if (runningEmptyOp.count(op.id))
+        return false;
+      else
+        hist.erase(op);
+    }
+  }
+
+  return true;
+}
+
 bool QueueLin::distVal(History& hist) {
-  if (!extend(hist) || !tune(hist)) return false;
+  if (!extend(hist) || !tune(hist) || !removeEmptyOps(hist)) return false;
 
   std::unordered_map<value_type, size_t> opByVal;
   std::vector<std::tuple<time_type, bool, Operation>> enqEvents, otherEvents;

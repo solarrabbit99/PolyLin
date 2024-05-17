@@ -17,6 +17,9 @@ class QueueLin {
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `ENQ` operation)
   bool tune(History& hist);
+
+  // Remove empty peek and deq operations
+  bool removeEmptyOps(History& hist);
 };
 
 }  // namespace polylin

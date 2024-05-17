@@ -9,6 +9,8 @@ bool StackLin::extend(History& hist) {
   proc_type maxProc = 0;
   std::unordered_map<value_type, int> pushPopDelta;
   for (const Operation& o : hist) {
+    if (o.value == EMPTY_VALUE) continue;
+
     if (o.method == Method::PUSH)
       pushPopDelta[o.value]++;
     else if (o.method == Method::POP)
@@ -28,6 +30,8 @@ bool StackLin::tune(History& hist) {
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> pushOp, popOp;
   for (const Operation& o : hist) {
+    if (o.value == EMPTY_VALUE) continue;
+
     if (!minResTime.count(o.value)) {
       minResTime[o.value] = o.endTime;
       maxInvTime[o.value] = o.startTime;
@@ -63,12 +67,51 @@ bool StackLin::tune(History& hist) {
   return true;
 }
 
+bool StackLin::removeEmptyOps(History& hist) {
+  std::vector<std::tuple<time_type, bool, Operation>> events;
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+
+  std::unordered_set<id_type> runningEmptyOp;
+  std::unordered_set<value_type> critVal, endedVal;
+
+  for (const auto& [time, isInv, op] : events) {
+    if (op.value != EMPTY_VALUE) {
+      if (isInv) {
+        if (op.method == Method::POP) {
+          critVal.erase(op.value);
+          endedVal.insert(op.value);
+        }
+      } else {
+        if (op.method == Method::PUSH && !endedVal.count(op.value))
+          critVal.insert(op.value);
+      }
+    }
+
+    if (critVal.empty()) runningEmptyOp.clear();
+
+    if (op.value == EMPTY_VALUE) {
+      if (isInv)
+        runningEmptyOp.insert(op.id);
+      else if (runningEmptyOp.count(op.id))
+        return false;
+      else
+        hist.erase(op);
+    }
+  }
+
+  return true;
+}
+
 bool StackLin::distVal(History& hist) {
   if (!extend(hist)) return false;
 
   for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
 
-  if (!tune(hist)) return false;
+  if (!tune(hist) || !removeEmptyOps(hist)) return false;
 
   std::unordered_set<value_type> removedVals;
   std::vector<std::tuple<time_type, bool, Operation>> events;

@@ -46,6 +46,7 @@ typedef int time_type;
 typedef unsigned int proc_type;
 typedef unsigned int id_type;
 
+#define EMPTY_VALUE -1
 #define MIN_TIME std::numeric_limits<time_type>::lowest()
 #define MAX_TIME std::numeric_limits<time_type>::max()
 
