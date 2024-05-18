@@ -27,6 +27,9 @@ bool StackLin::extend(History& hist) {
 }
 
 bool StackLin::tune(History& hist) {
+  std::unordered_map<value_type, std::vector<Operation>> opByVal;
+  for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
+
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> pushOp, popOp;
   for (const Operation& o : hist) {
@@ -107,11 +110,7 @@ bool StackLin::removeEmptyOps(History& hist) {
 }
 
 bool StackLin::distVal(History& hist) {
-  if (!extend(hist)) return false;
-
-  for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
-
-  if (!tune(hist) || !removeEmptyOps(hist)) return false;
+  if (!extend(hist) || !tune(hist) || !removeEmptyOps(hist)) return false;
 
   std::unordered_set<value_type> removedVals;
   std::vector<std::tuple<time_type, bool, Operation>> events;
@@ -120,6 +119,9 @@ bool StackLin::distVal(History& hist) {
     events.emplace_back(o.endTime, false, o);
   }
   std::sort(events.begin(), events.end());
+
+  std::unordered_map<value_type, size_t> opByVal;
+  for (const Operation& o : hist) ++opByVal[o.value];
 
   while (removedVals.size() < opByVal.size()) {
     std::unordered_map<value_type, size_t> freeOp;
@@ -150,7 +152,7 @@ bool StackLin::distVal(History& hist) {
 
     bool hasRem = false;
     for (auto& [value, cnt] : freeOp)
-      if (cnt == opByVal[value].size()) {
+      if (cnt == opByVal[value]) {
         hasRem = true;
         removedVals.insert(value);
       }
