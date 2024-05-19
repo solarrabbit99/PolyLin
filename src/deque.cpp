@@ -1,5 +1,6 @@
 #include "deque.hpp"
 
+#include <algorithm>
 #include <unordered_map>
 
 using namespace polylin;
@@ -74,4 +75,40 @@ bool DequeLin::isPeek(Method method) {
 
 bool DequeLin::isPop(Method method) {
   return method == Method::POP_FRONT || method == Method::POP_BACK;
+}
+
+bool DequeLin::distValHelper(const size_t& i, const size_t& j) {
+  if (distValMat[i][j].has_value()) return distValMat[i][j].value();
+}
+
+bool DequeLin::distVal(History& hist) {
+  if (!extend(hist) || !tune(hist)) return false;
+
+  events.clear();
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+
+  size_t n = hist.size();
+  distValMat =
+      std::vector(2 * n, std::vector<std::optional<bool>>(2 * n, std::nullopt));
+
+  std::unordered_set<value_type> frontSidedVals, backSidedVals;
+  for (const Operation& o : hist) {
+    if (isFrontMethod(o.method))
+      frontSidedVals.insert(o.value);
+    else
+      backSidedVals.insert(o.value);
+  }
+  oneSidedVals = std::move(frontSidedVals);
+  for (const value_type& val : backSidedVals) {
+    if (oneSidedVals.count(val))
+      oneSidedVals.erase(val);
+    else
+      oneSidedVals.insert(val);
+  }
+
+  return distValHelper(0, 0);
 }

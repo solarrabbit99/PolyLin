@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include <vector>
+
 #include "definitions.hpp"
 
 namespace polylin {
@@ -25,6 +28,12 @@ class DequeLin {
   bool isPop(Method method);
 
   bool isPeek(Method method);
+
+  bool distValHelper(const size_t& i, const size_t& j);
+
+  std::vector<std::vector<std::optional<bool>>> distValMat;
+  std::vector<std::tuple<time_type, bool, Operation>> events;
+  std::unordered_set<value_type> oneSidedVals;
 };
 
 }  // namespace polylin
