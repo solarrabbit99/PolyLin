@@ -92,11 +92,7 @@ bool StackLin::removeEmptyOps(History& hist) {
         if (op.method == Method::PUSH && !endedVal.count(op.value))
           critVal.insert(op.value);
       }
-    }
-
-    if (critVal.empty()) runningEmptyOp.clear();
-
-    if (op.value == EMPTY_VALUE) {
+    } else {
       if (isInv)
         runningEmptyOp.insert(op.id);
       else if (runningEmptyOp.count(op.id))
@@ -104,6 +100,8 @@ bool StackLin::removeEmptyOps(History& hist) {
       else
         hist.erase(op);
     }
+
+    if (critVal.empty()) runningEmptyOp.clear();
   }
 
   return true;
