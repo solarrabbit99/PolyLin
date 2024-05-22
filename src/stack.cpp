@@ -31,7 +31,9 @@ bool StackLin::extend(History& hist) {
   return true;
 }
 
-bool StackLin::tune(History& hist) {
+bool StackLin::tune(
+    History& hist,
+    std::unordered_map<value_type, interval>& critIntervalByVal) {
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> pushOp, popOp;
   History hist2;
@@ -118,62 +120,63 @@ bool StackLin::tune(History& hist) {
       hist.emplace(o2);
     }
   }
+  opQueue.clear();
+  events.clear();
+
+  // flush timings one more time
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+  hist.clear();
+
+  time = 0;
+
+  for (const auto& [oldTime, isInv, o] : events) {
+    std::queue<Operation>& dq = opQueue[o.value];
+    if (isInv) {
+      Operation o2{o};
+      o2.startTime = time;
+      dq.emplace(o2);
+      if (critIntervalByVal.count(o.value))
+        critIntervalByVal[o.value].second = time;
+    } else {
+      Operation o2{dq.front()};
+      dq.pop();
+      o2.endTime = time;
+      hist.emplace(o2);
+      if (!critIntervalByVal.count(o.value))
+        critIntervalByVal[o.value].first = time;
+    }
+    ++time;
+  }
 
   return true;
 }
 
 bool StackLin::distVal(History& hist) {
-  if (!extend(hist) || !tune(hist)) return false;
+  std::unordered_map<value_type, interval> critIntervalByVal;
+  if (!extend(hist) || !tune(hist, critIntervalByVal)) return false;
 
-  std::set<std::tuple<time_type, bool, Operation>> events;
-  std::unordered_map<value_type, size_t> opByVal;
-  for (const Operation& o : hist) {
-    ++opByVal[o.value];
-    events.emplace(o.startTime, true, o);
-    events.emplace(o.endTime, false, o);
-  }
+  IntervalTree<time_type, id_type> operations;
+  std::unordered_map<value_type, IntervalTree<time_type, id_type>>
+      operationsByVal;
+  SegmentTree critIntervals{2 * hist.size() - 1};   // +1 per value
+  SegmentTree critIntervals2{2 * hist.size() - 1};  // +i per value i
 
-  while (opByVal.size()) {
-    std::unordered_map<value_type, size_t> freeOp;
-    std::unordered_map<value_type, std::unordered_set<id_type>> runningOp;
-    std::unordered_set<value_type> critVal;
+  // TODO Fill all DSes
 
-    auto iter = events.begin();
-    while (iter != events.end()) {
-      const auto& [time, isInv, op] = *iter;
+  while (!operations.empty()) {
+    std::vector<value_type> clearedVals;
+    // find empty interval point clear operation on point handle satisfied
+    // critical intervals
 
-      if (!opByVal.count(op.value)) {
-        iter = events.erase(iter);
-        continue;
-      }
+    // find single layer interval point and value clear operations on point
+    // handle satisfied critical intervals
 
-      if (isInv) {
-        runningOp[op.value].emplace(op.id);
-        if (op.method == Method::POP) critVal.erase(op.value);
-      } else {
-        runningOp[op.value].erase(op.id);
-        if (op.method == Method::PUSH) critVal.insert(op.value);
-      }
-
-      if (critVal.empty()) {
-        for (auto& [value, set] : runningOp) freeOp[value] += set.size();
-        runningOp.clear();
-      }
-      if (critVal.size() == 1) {
-        value_type value = *critVal.begin();
-        freeOp[value] += runningOp[value].size();
-        runningOp.erase(value);
-      }
-      ++iter;
-    }
-
-    bool hasRem = false;
-    for (auto& [value, cnt] : freeOp)
-      if (cnt == opByVal[value]) {
-        hasRem = true;
-        opByVal.erase(value);
-      }
-    if (!hasRem) return false;
+    if (clearedVals.empty()) return false;
+    // remove criticals intervals of cleared values
   }
 
   return true;

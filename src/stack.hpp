@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -17,9 +18,11 @@ class StackLin {
   // `PUSH` methods
   bool extend(History& hist);
 
+  typedef std::pair<time_type, time_type> interval;
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `PUSH` operation)
-  bool tune(History& hist);
+  bool tune(History& hist,
+            std::unordered_map<value_type, interval>& critIntervalByVal);
 };
 
 }  // namespace polylin
