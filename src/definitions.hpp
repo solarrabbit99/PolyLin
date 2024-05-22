@@ -42,7 +42,7 @@ inline Method getMethodFromStr(std::string str) {
 }
 
 typedef int value_type;
-typedef long long time_type;
+typedef unsigned long long time_type;
 typedef unsigned int proc_type;
 typedef unsigned int id_type;
 

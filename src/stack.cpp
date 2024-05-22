@@ -1,7 +1,11 @@
 #include "stack.hpp"
 
 #include <algorithm>
+#include <queue>
 #include <set>
+
+#include "commons/interval_tree.hpp"
+#include "commons/segment_tree.hpp"
 
 using namespace polylin;
 
@@ -28,9 +32,6 @@ bool StackLin::extend(History& hist) {
 }
 
 bool StackLin::tune(History& hist) {
-  std::unordered_map<value_type, std::vector<Operation>> opByVal;
-  for (const Operation& o : hist) opByVal[o.value].emplace_back(o);
-
   std::unordered_map<value_type, time_type> minResTime, maxInvTime;
   std::unordered_map<value_type, Operation> pushOp, popOp;
   History hist2;
@@ -74,10 +75,50 @@ bool StackLin::tune(History& hist) {
     hist2.emplace(valPushOp);
     hist2.emplace(valPopOp);
   }
+  hist.clear();
 
-  hist2.emplace(0, Method::PUSH, EMPTY_VALUE, MIN_TIME, MIN_TIME + 1);
-  hist2.emplace(0, Method::POP, EMPTY_VALUE, MAX_TIME - 1, MAX_TIME);
-  std::swap(hist, hist2);
+  for (const Operation& o : hist2) {
+    Operation o2{o};
+    o2.startTime = ((o2.startTime + 2) << 2);
+    o2.endTime = ((o2.endTime + 2) << 2);
+    if (o.method == PEEK) {
+      o2.startTime += 1;
+      o2.endTime += 1;
+    } else if (o.method == POP) {
+      o2.startTime += 2;
+      o2.endTime += 2;
+    }
+    hist.emplace(std::move(o2));
+  }
+  hist.emplace(0, Method::PUSH, EMPTY_VALUE, MIN_TIME, MIN_TIME + 1);
+  hist.emplace(0, Method::POP, EMPTY_VALUE, MAX_TIME - 1, MAX_TIME);
+  hist2.clear();
+
+  std::vector<std::tuple<time_type, bool, Operation>> events;
+  for (const Operation& o : hist) {
+    events.emplace_back(o.startTime, true, o);
+    events.emplace_back(o.endTime, false, o);
+  }
+  std::sort(events.begin(), events.end());
+  hist.clear();
+
+  std::unordered_map<value_type, std::queue<Operation>> opQueue;
+  time_type time = MIN_TIME;
+  for (const auto& [oldTime, isInv, o] : events) {
+    std::queue<Operation>& dq = opQueue[o.value];
+    if (isInv) {
+      Operation o2{o};
+      o2.startTime = ++time;
+      dq.emplace(o2);
+    } else {
+      while (dq.front() != o) dq.pop();
+      Operation o2{dq.front()};
+      dq.pop();
+      o2.endTime = ++time;
+      hist.emplace(o2);
+    }
+  }
+
   return true;
 }
 

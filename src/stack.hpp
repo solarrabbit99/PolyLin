@@ -13,15 +13,13 @@ class StackLin {
   bool distVal(History& hist);
 
  private:
-  // Returns `false` if there is value where `POP` methods > `PUSH` methods
+  // Add `POP` methods. Returns `false` if there is value where `POP` methods >
+  // `PUSH` methods
   bool extend(History& hist);
 
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `PUSH` operation)
   bool tune(History& hist);
-
-  // Remove empty peek and pop operations
-  bool removeEmptyOps(History& hist);
 };
 
 }  // namespace polylin
