@@ -99,6 +99,10 @@ inline bool operator==(const Operation& a, const Operation& b) {
   return a.id == b.id;
 }
 
+inline bool operator!=(const Operation& a, const Operation& b) {
+  return !(a == b);
+}
+
 typedef std::unordered_set<Operation> History;
 
 }  // namespace polylin
