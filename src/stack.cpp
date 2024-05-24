@@ -105,6 +105,7 @@ bool StackLin::tune(
   hist.clear();
 
   std::unordered_map<value_type, std::queue<Operation>> opQueue;
+  std::unordered_map<value_type, std::unordered_set<id_type>> inQueue;
   time_type time = MIN_TIME;
   for (const auto& [oldTime, isInv, o] : events) {
     std::queue<Operation>& dq = opQueue[o.value];
@@ -112,9 +113,15 @@ bool StackLin::tune(
       Operation o2{o};
       o2.startTime = ++time;
       dq.emplace(o2);
+      inQueue[o.value].insert(o.id);
     } else {
-      while (dq.front() != o) dq.pop();
+      if (!inQueue[o.value].count(o.id)) continue;
+      while (dq.front() != o) {
+        inQueue[o.value].erase(dq.front().id);
+        dq.pop();
+      }
       Operation o2{dq.front()};
+      inQueue[o.value].erase(o2.id);
       dq.pop();
       o2.endTime = ++time;
       hist.emplace(o2);
@@ -167,8 +174,10 @@ bool StackLin::distVal(History& hist) {
   std::unordered_map<time_type, value_type> timeToVal;
   interval_tree_t<time_type> operations;
   std::unordered_map<value_type, interval_tree_t<time_type>> operationsByVal;
-  SegmentTree critIntervals{2 * n - 1};   // +1 per value
-  SegmentTree critIntervals2{2 * n - 1};  // +i per value i
+  std::vector<int> segmentTreeBase(2 * n - 1, 0),
+      segmentTreeBase2(2 * n - 1, 0);
+  SegmentTree critIntervals{segmentTreeBase};    // +1 per value
+  SegmentTree critIntervals2{segmentTreeBase2};  // +i per value i
 
   for (const auto& [value, intvl] : critIntervalByVal) {
     critIntervals.update_range(intvl.first, intvl.second - 1, 1);
@@ -176,8 +185,8 @@ bool StackLin::distVal(History& hist) {
   }
   for (const Operation& o : hist) {
     timeToVal[o.startTime] = o.value;
-    operations.insert({o.startTime, o.endTime - 1});
-    operationsByVal[o.value].insert({o.startTime, o.endTime - 1});
+    operations.insert({o.startTime, o.endTime});
+    operationsByVal[o.value].insert({o.startTime, o.endTime});
   }
 
   std::unordered_map<value_type, std::vector<time_type>> lastPoints;
@@ -227,13 +236,13 @@ bool StackLin::distVal(History& hist) {
     if (clearedVals.empty()) return false;
 
     // remove criticals intervals of cleared values
-    std::unordered_set<value_type> clearedVals2;
-    for (const value_type& val : clearedVals) {
+    std::unordered_set<value_type> clearedVals2{std::move(clearedVals)};
+    for (const value_type& val : clearedVals2) {
       auto& [b, e] = critIntervalByVal[val];
       critIntervals.update_range(b, e - 1, -1);
       critIntervals2.update_range(b, e - 1, -val);
-      std::vector<interval> toRemove;
       for (const time_type& t : lastPoints[val]) {
+        std::vector<interval> toRemove;
         operations.overlap_find_all({t, t + 1}, [&](auto iter) {
           toRemove.emplace_back(iter->interval().low(),
                                 iter->interval().high());
@@ -242,7 +251,6 @@ bool StackLin::distVal(History& hist) {
         for (const interval& intvl : toRemove) removeInterval(intvl);
       }
     }
-    clearedVals = std::move(clearedVals2);
   }
 
   return true;

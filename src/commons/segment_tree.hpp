@@ -21,13 +21,13 @@ class SegmentTree {
   std::vector<int> lazy;
   int size;
 
-  void build(int v, int tl, int tr) {
+  void build(const std::vector<int>& arr, int v, int tl, int tr) {
     if (tl == tr) {
-      tree[v] = Node(0, tl);
+      tree[v] = Node(arr[tl], tl);
     } else {
       int tm = (tl + tr) / 2;
-      build(v * 2, tl, tm);
-      build(v * 2 + 1, tm + 1, tr);
+      build(arr, v * 2, tl, tm);
+      build(arr, v * 2 + 1, tm + 1, tr);
       tree[v] = merge(tree[v * 2], tree[v * 2 + 1]);
     }
   }
@@ -76,10 +76,11 @@ class SegmentTree {
   }
 
  public:
-  SegmentTree(const size_t& size) {
+  SegmentTree(const std::vector<int>& arr) {
+    size = arr.size();
     tree.resize(size * 4);
     lazy.resize(size * 4);
-    build(1, 0, size - 1);
+    build(arr, 1, 0, size - 1);
   }
 
   void update_range(int l, int r, int addend) {
