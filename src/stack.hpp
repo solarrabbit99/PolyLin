@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "commons/interval_tree.hpp"
 #include "definitions.hpp"
 
 namespace polylin {
@@ -18,7 +19,7 @@ class StackLin {
   // `PUSH` methods
   bool extend(History& hist);
 
-  typedef std::pair<time_type, time_type> interval;
+  typedef lib_interval_tree::interval<time_type> interval;
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `PUSH` operation)
   bool tune(History& hist,

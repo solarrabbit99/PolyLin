@@ -9,7 +9,7 @@
 
 namespace polylin {
 
-class SegmentTree {
+class segment_tree {
  private:
   struct Node {
     int min_value;
@@ -76,8 +76,8 @@ class SegmentTree {
   }
 
  public:
-  SegmentTree(const std::vector<int>& arr) {
-    size = arr.size();
+  segment_tree(const size_t& size) {
+    std::vector<int> arr(size, 0);
     tree.resize(size * 4);
     lazy.resize(size * 4);
     build(arr, 1, 0, size - 1);

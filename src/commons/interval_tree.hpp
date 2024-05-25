@@ -36,6 +36,12 @@ struct interval {
       throw std::invalid_argument(
           "Low border is not lower or equal to high border.");
   }
+
+  interval() = default;
+
+  interval(interval const& other) = default;
+
+  interval& operator=(interval const& other) = default;
 #else
 #if __cplusplus >= 201703L
   constexpr
@@ -139,7 +145,9 @@ struct interval {
     return {std::min(low_, other.low_), std::max(high_, other.high_)};
   }
 
- protected:
+  /**
+   * Made public for easier access by stack algorithms
+   */
   value_type low_;
   value_type high_;
 };
@@ -637,6 +645,15 @@ class interval_tree {
       erase(iter);
       return insert_merge_set(mergeSet, mergeSetOverlapping);
     }
+  }
+
+  /**
+   * Erases the interval from the tree.
+   */
+  void erase(interval_type const& ival) {
+    auto iter = find(ival);
+    if (iter == end()) return;
+    erase(iter);
   }
 
   /**

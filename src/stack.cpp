@@ -149,14 +149,14 @@ bool StackLin::tune(
       o2.startTime = time;
       dq.emplace(o2);
       if (critIntervalByVal.count(o2.value))
-        critIntervalByVal[o2.value].second = time;
+        critIntervalByVal[o2.value].high_ = time;
     } else {
       Operation o2{dq.front()};
       dq.pop();
       o2.endTime = time;
       hist.emplace(o2);
       if (!critIntervalByVal.count(o2.value))
-        critIntervalByVal[o2.value].first = time;
+        critIntervalByVal[o2.value].low_ = time;
     }
     ++time;
   }
@@ -174,14 +174,12 @@ bool StackLin::distVal(History& hist) {
   std::unordered_map<time_type, value_type> timeToVal;
   interval_tree_t<time_type> operations;
   std::unordered_map<value_type, interval_tree_t<time_type>> operationsByVal;
-  std::vector<int> segmentTreeBase(2 * n - 1, 0),
-      segmentTreeBase2(2 * n - 1, 0);
-  SegmentTree critIntervals{segmentTreeBase};    // +1 per value
-  SegmentTree critIntervals2{segmentTreeBase2};  // +i per value i
+  segment_tree critIntervals{2 * n - 1};   // +1 per value
+  segment_tree critIntervals2{2 * n - 1};  // +i per value i
 
   for (const auto& [value, intvl] : critIntervalByVal) {
-    critIntervals.update_range(intvl.first, intvl.second - 1, 1);
-    critIntervals2.update_range(intvl.first, intvl.second - 1, value);
+    critIntervals.update_range(intvl.low(), intvl.high() - 1, 1);
+    critIntervals2.update_range(intvl.low(), intvl.high() - 1, value);
   }
   for (const Operation& o : hist) {
     timeToVal[o.startTime] = o.value;
@@ -189,15 +187,22 @@ bool StackLin::distVal(History& hist) {
     operationsByVal[o.value].insert({o.startTime, o.endTime});
   }
 
-  std::unordered_map<value_type, std::vector<time_type>> lastPoints;
+  std::unordered_map<value_type, std::vector<time_type>> pointsByLastVal;
   std::unordered_set<value_type> clearedVals;
 
-  auto removeInterval = [&](const interval& intvl) {
-    operations.erase(operations.find({intvl.first, intvl.second}));
-    value_type val = timeToVal[intvl.first];
-    operationsByVal[val].erase(
-        operationsByVal[val].find({intvl.first, intvl.second}));
-    if (operationsByVal[val].empty()) clearedVals.insert(val);
+  auto removeOverlap = [&](interval_tree_t<time_type>& intervals,
+                           const interval& intvl) {
+    std::vector<interval> toRemove;
+    intervals.overlap_find_all(intvl, [&](auto iter) {
+      toRemove.emplace_back(iter->interval());
+      return true;
+    });
+    for (const interval& intvl : toRemove) {
+      operations.erase(intvl);
+      value_type val = timeToVal[intvl.high()];
+      operationsByVal[val].erase(intvl);
+      if (operationsByVal[val].empty()) clearedVals.insert(val);
+    }
   };
 
   while (!operations.empty()) {
@@ -207,11 +212,7 @@ bool StackLin::distVal(History& hist) {
     while (pr.first == 0) {
       time_type pos = pr.second;
       std::vector<interval> toRemove;
-      operations.overlap_find_all({pos, pos + 1}, [&](auto iter) {
-        toRemove.emplace_back(iter->interval().low(), iter->interval().high());
-        return true;
-      });
-      for (const interval& intvl : toRemove) removeInterval(intvl);
+      removeOverlap(operations, {pos, pos + 1});
       critIntervals.update_range(pos, pos, 2 * n);  // 2*n is a sentinel value
       pr = critIntervals.query_min(0, 2 * n - 1);
     }
@@ -222,13 +223,9 @@ bool StackLin::distVal(History& hist) {
       time_type pos = pr.second;
       value_type val = critIntervals2.query_min(pos, pos).first;
       std::vector<interval> toRemove;
-      operationsByVal[val].overlap_find_all({pos, pos + 1}, [&](auto iter) {
-        toRemove.emplace_back(iter->interval().low(), iter->interval().high());
-        return true;
-      });
-      for (const interval& intvl : toRemove) removeInterval(intvl);
+      removeOverlap(operationsByVal[val], {pos, pos + 1});
       critIntervals.update_range(pos, pos, 2 * n);  // 2*n is a sentinel value
-      lastPoints[val].push_back(pos);
+      pointsByLastVal[val].push_back(pos);
 
       pr = critIntervals.query_min(0, 2 * n - 1);
     }
@@ -241,15 +238,8 @@ bool StackLin::distVal(History& hist) {
       auto& [b, e] = critIntervalByVal[val];
       critIntervals.update_range(b, e - 1, -1);
       critIntervals2.update_range(b, e - 1, -val);
-      for (const time_type& t : lastPoints[val]) {
-        std::vector<interval> toRemove;
-        operations.overlap_find_all({t, t + 1}, [&](auto iter) {
-          toRemove.emplace_back(iter->interval().low(),
-                                iter->interval().high());
-          return true;
-        });
-        for (const interval& intvl : toRemove) removeInterval(intvl);
-      }
+      for (const time_type& t : pointsByLastVal[val])
+        removeOverlap(operations, {t, t + 1});
     }
   }
 
