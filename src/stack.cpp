@@ -171,7 +171,7 @@ bool StackLin::distVal(History& hist) {
   size_t n = hist.size();
 
   using namespace lib_interval_tree;
-  std::unordered_map<time_type, value_type> timeToVal;
+  std::unordered_map<time_type, value_type> startTimeToVal;
   interval_tree_t<time_type> operations;
   std::unordered_map<value_type, interval_tree_t<time_type>> operationsByVal;
   segment_tree critIntervals{2 * n - 1};   // +1 per value
@@ -182,7 +182,7 @@ bool StackLin::distVal(History& hist) {
     critIntervals2.update_range(intvl.low(), intvl.high() - 1, value);
   }
   for (const Operation& o : hist) {
-    timeToVal[o.startTime] = o.value;
+    startTimeToVal[o.startTime] = o.value;
     operations.insert({o.startTime, o.endTime});
     operationsByVal[o.value].insert({o.startTime, o.endTime});
   }
@@ -199,15 +199,14 @@ bool StackLin::distVal(History& hist) {
     });
     for (const interval& intvl : toRemove) {
       operations.erase(intvl);
-      value_type val = timeToVal[intvl.high()];
+      value_type val = startTimeToVal[intvl.low()];
       operationsByVal[val].erase(intvl);
       if (operationsByVal[val].empty()) clearedVals.insert(val);
     }
   };
 
   while (!operations.empty()) {
-    // find empty interval point clear operation on point handle satisfied
-    // critical intervals
+    // find empty points, clear overlapping operations
     std::pair<int, int> pr = critIntervals.query_min(0, 2 * n - 1);
     while (pr.first == 0) {
       time_type pos = pr.second;
@@ -217,8 +216,7 @@ bool StackLin::distVal(History& hist) {
       pr = critIntervals.query_min(0, 2 * n - 1);
     }
 
-    // find single layer interval point and value clear operations on point
-    // handle satisfied critical intervals
+    // find single layer interval points and value, clear overlapping operations
     while (pr.first == 1) {
       time_type pos = pr.second;
       value_type val = critIntervals2.query_min(pos, pos).first;
@@ -226,13 +224,13 @@ bool StackLin::distVal(History& hist) {
       removeOverlap(operationsByVal[val], {pos, pos + 1});
       critIntervals.update_range(pos, pos, 2 * n);  // 2*n is a sentinel value
       pointsByLastVal[val].push_back(pos);
-
       pr = critIntervals.query_min(0, 2 * n - 1);
     }
 
     if (clearedVals.empty()) return false;
 
     // remove criticals intervals of cleared values
+    // remove overlapping operations
     std::unordered_set<value_type> clearedVals2{std::move(clearedVals)};
     for (const value_type& val : clearedVals2) {
       auto& [b, e] = critIntervalByVal[val];
