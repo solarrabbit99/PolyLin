@@ -76,7 +76,7 @@ class segment_tree {
   }
 
  public:
-  segment_tree(const size_t& size) {
+  segment_tree(const size_t& size) : size(size) {
     std::vector<int> arr(size, 0);
     tree.resize(size * 4);
     lazy.resize(size * 4);
