@@ -56,6 +56,7 @@ bool StackLin::tune(
         std::queue<Operation>& peekQueue = peekOps[o.value];
         while (peekQueue.size()) {
           Operation peekOp2{peekQueue.front()};
+          peekQueue.pop();
           peekOp2.startTime = ++time;
           peekQueue2.emplace(std::move(peekOp2));
         }

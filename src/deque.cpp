@@ -208,20 +208,17 @@ bool DequeLin::distValHelper(
             critValsFront.erase(o.value);
           else
             critValsBack.erase(o.value);
-          continue;
-        }
-        if (!goodVals.count(o.value)) continue;
-        if (o.value != val) continue;
-        // o.value == val
-        if (isFrontMethod(o.method)) ongoingsFront.insert(o.id);
-        if (!isFrontMethod(o.method)) ongoingsBack.insert(o.id);
-        if (isPush(o.method)) {
-          pendingPush = true;
-          pushId = o.id;
-        }
-        if (isPop(o.method)) {
-          pendingPop = true;
-          popId = o.id;
+        } else if (o.value == val) {
+          if (isFrontMethod(o.method)) ongoingsFront.insert(o.id);
+          if (!isFrontMethod(o.method)) ongoingsBack.insert(o.id);
+          if (isPush(o.method)) {
+            pendingPush = true;
+            pushId = o.id;
+          }
+          if (isPop(o.method)) {
+            pendingPop = true;
+            popId = o.id;
+          }
         }
       } else {
         if (params.oneSidedVals.count(o.value) && isPush(o.method)) {
@@ -229,17 +226,13 @@ bool DequeLin::distValHelper(
             critValsFront.insert(o.value);
           else
             critValsBack.insert(o.value);
-          continue;
-        }
-        if (!goodVals.count(o.value)) continue;
-        if (o.value != val) {
+        } else if (o.value == val) {
+          if (isFrontMethod(o.method) && ongoingsFront.count(o.id)) break;
+          if (!isFrontMethod(o.method) && ongoingsBack.count(o.id)) break;
+        } else if (goodVals.count(o.value)) {
           if (isFrontMethod(o.method) && !endedFront) break;
           if (!isFrontMethod(o.method) && !endedBack) break;
-          continue;
         }
-        // o.value == val
-        if (isFrontMethod(o.method) && ongoingsFront.count(o.id)) break;
-        if (!isFrontMethod(o.method) && ongoingsBack.count(o.id)) break;
       }
       // Scheduling logic
       if (!pendingPush) continue;
@@ -266,24 +259,24 @@ bool DequeLin::distValHelper(
         }
       };
       // Try scheduling any pending push
-      if (ongoingsFront.count(pushId) && critValsFront.empty() && k >= i - 1) {
+      if (ongoingsFront.count(pushId) && critValsFront.empty() && k + 1 >= i) {
         hasPushed = true;
         clearFrontExceptPop();
       } else if (ongoingsBack.count(pushId) && critValsBack.empty() &&
-                 k >= j - 1) {
+                 k + 1 >= j) {
         hasPushed = true;
         clearBackExceptPop();
       }
       if (!hasPushed) continue;
       // Try scheduling any pending peeks
-      if (critValsFront.empty() && k >= i - 1 &&
+      if (critValsFront.empty() && k + 1 >= i &&
           (!pendingPop || !ongoingsFront.count(popId)))
         clearFrontExceptPop();
-      if (critValsBack.empty() && k >= j - 1 &&
+      if (critValsBack.empty() && k + 1 >= j &&
           (!pendingPop || !ongoingsBack.count(popId)))
         clearBackExceptPop();
       // Try scheduling any pending pop
-      if (critValsFront.empty() && k >= i - 1 && pendingPop &&
+      if (critValsFront.empty() && k + 1 >= i && pendingPop &&
           ongoingsFront.count(popId) &&
           endedFront + endedBack + 1 == params.sizeByVal.at(val)) {
         nexti = k + 1;
@@ -293,7 +286,7 @@ bool DequeLin::distValHelper(
         }
         break;
       }
-      if (critValsBack.empty() && k >= j - 1 && pendingPop &&
+      if (critValsBack.empty() && k + 1 >= j && pendingPop &&
           ongoingsBack.count(popId) &&
           endedFront + endedBack + 1 == params.sizeByVal.at(val)) {
         nextj = k + 1;
