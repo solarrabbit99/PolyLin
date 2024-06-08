@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "deque.hpp"
 #include "priorityqueue.hpp"
 #include "queue.hpp"
 #include "reader.hpp"
@@ -20,4 +21,6 @@ int main(int argc, const char *argv[]) {
     std::cout << QueueLin().distVal(hist) << std::endl;
   else if (histType == "pqueue")
     std::cout << PriorityQueueLin().distVal(hist) << std::endl;
+  else if (histType == "deque")
+    std::cout << DequeLin().distVal(hist) << std::endl;
 }
