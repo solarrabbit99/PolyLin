@@ -1,0 +1,4 @@
+# deque
+0 push_front 1 1 2
+0 push_back 2 3 4
+0 peek_back 1 5 6
