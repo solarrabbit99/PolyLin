@@ -6,8 +6,8 @@ do
   numOp=$(( 10000 * $i ))
 	for j in {1..3};
 	do
-		./prodcon-ms -producers=2 -consumers=2 -operations=$numOp -log_operations=1 -print_summary=0 -shuffle_threads=1 > temp.log
-		./format_history.py temp.log ms.$i$j.log
+		./prodcon-kstack -producers=2 -consumers=2 -operations=$numOp -log_operations=1 -print_summary=0 -shuffle_threads=1 > temp.log
+		./format_history.py temp.log kstack.$i$j.log
 		rm -f temp.log
 	done
 done
@@ -19,7 +19,7 @@ do
 	echo -n "Running testcases...[$i/10]"$'\r'
 	for j in {1..3};
 	do
-	  file=ms.$i$j.log
+	  file=kstack.$i$j.log
 		time=$({ /usr/bin/time -v ../../build/engine $file; } 2>&1 | grep "User time" | awk '{print $NF}')
 		numOp=$(wc -l $file | awk '{print $1}')
 		echo $file,$numOp,$time >> report.txt
