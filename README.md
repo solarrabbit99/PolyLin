@@ -4,6 +4,17 @@ Polynomial time solutions to monitoring linearizability of concurrent histories.
 
 The main engine (`src`) is written in C++20. Scripts for generating testcases (`scripts`) are written in python.
 
+## Time Complexity
+
+The individual algorithms are implemented with the following time complexities:
+
+|          | Dist Vals  |
+| -------- | ---------- |
+| Stack    | O(n log n) |
+| Queue    | O(n log n) |
+| P. Queue | O(n log n) |
+| Deque    | O(n^4)     |
+
 ## Starting Up
 
 Clone repository locally.
