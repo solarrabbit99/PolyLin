@@ -193,109 +193,143 @@ bool DequeLin::distValHelper(
   }
 
   // Interate through good values and check if schedulable
-  for (const value_type& val : goodVals) {
-    std::unordered_set<value_type> critValsFront, critValsBack;
-    std::unordered_set<id_type> ongoingsFront, ongoingsBack;
-    size_t endedFront = 0, endedBack = 0;
-    size_t nexti = i, nextj = j;
-    bool pendingPush = false, pendingPop = false, hasPushed = false;
-    id_type popId, pushId;
-    for (int k = 0; k < n; ++k) {
-      const auto& [_, isInv, o] = params.events[k];
-      if (isInv) {
-        if (params.oneSidedVals.count(o.value) && isPop(o.method)) {
-          if (isFrontMethod(o.method))
-            critValsFront.erase(o.value);
-          else
-            critValsBack.erase(o.value);
-        } else if (o.value == val) {
-          if (isFrontMethod(o.method)) ongoingsFront.insert(o.id);
-          if (!isFrontMethod(o.method)) ongoingsBack.insert(o.id);
-          if (isPush(o.method)) {
-            pendingPush = true;
-            pushId = o.id;
-          }
-          if (isPop(o.method)) {
-            pendingPop = true;
-            popId = o.id;
-          }
+  std::unordered_set<value_type> critValsFront, critValsBack;
+  std::unordered_map<value_type, size_t> endedFront, endedBack;
+  std::unordered_map<value_type, size_t> nexti, nextj;
+  OngoingSet frontOngoing, backOngoing;
+  std::unordered_set<value_type> invalidVals;
+  std::unordered_set<value_type> pendingFrontVals(goodVals),
+      pendingBackVals(goodVals);
+
+  for (int k = 0; k < n; ++k) {
+    const auto& [_, isInv, o] = params.events[k];
+    if (!goodVals.count(o.value) && !params.oneSidedVals.count(o.value))
+      continue;
+
+    if (isInv) {
+      if (params.oneSidedVals.count(o.value) && isPop(o.method)) {
+        if (isFrontMethod(o.method))
+          critValsFront.erase(o.value);
+        else
+          critValsBack.erase(o.value);
+      } else if (goodVals.count(o.value)) {
+        if (isFrontMethod(o.method))
+          frontOngoing.insert(o);
+        else
+          backOngoing.insert(o);
+      }
+    } else {
+      if (params.oneSidedVals.count(o.value) && isPush(o.method)) {
+        if (isFrontMethod(o.method))
+          critValsFront.insert(o.value);
+        else
+          critValsBack.insert(o.value);
+      } else if (goodVals.count(o.value)) {
+        if (frontOngoing.contains(o) || backOngoing.contains(o)) {
+          invalidVals.insert(o.value);
+          pendingFrontVals.erase(o.value);
+          pendingBackVals.erase(o.value);
         }
-      } else {
-        if (params.oneSidedVals.count(o.value) && isPush(o.method)) {
-          if (isFrontMethod(o.method))
-            critValsFront.insert(o.value);
-          else
-            critValsBack.insert(o.value);
-        } else if (o.value == val) {
-          if (isFrontMethod(o.method) && ongoingsFront.count(o.id)) break;
-          if (!isFrontMethod(o.method) && ongoingsBack.count(o.id)) break;
-        } else if (goodVals.count(o.value)) {
-          if (isFrontMethod(o.method) && !endedFront) break;
-          if (!isFrontMethod(o.method) && !endedBack) break;
+        if (isFrontMethod(o.method)) {
+          std::unordered_set<value_type> tmp;
+          for (const value_type& v : pendingFrontVals)
+            if (v != o.value)
+              invalidVals.insert(v);
+            else
+              tmp.insert(v);
+          std::swap(pendingFrontVals, tmp);
+        } else {
+          std::unordered_set<value_type> tmp;
+          for (const value_type& v : pendingBackVals)
+            if (v != o.value)
+              invalidVals.insert(v);
+            else
+              tmp.insert(v);
+          std::swap(pendingBackVals, tmp);
         }
       }
-      // Scheduling logic
-      if (!pendingPush) continue;
-      auto clearFrontExceptPop = [&]() {
-        bool hasPop = pendingPop && ongoingsFront.count(popId);
-        endedFront += ongoingsFront.size();
-        if (endedFront == params.frontSizeByVal.at(val)) nexti = k + 1;
-        ongoingsFront.clear();
-        if (hasPop) {
-          --endedFront;
-          ongoingsFront.insert(popId);
-        }
-      };
-      auto clearBackExceptPop = [&]() {
-        bool hasPop = pendingPop && ongoingsBack.count(popId);
-        endedBack += ongoingsBack.size();
-        if (endedBack ==
-            params.sizeByVal.at(val) - params.frontSizeByVal.at(val))
-          nextj = k + 1;
-        ongoingsBack.clear();
-        if (hasPop) {
-          --endedBack;
-          ongoingsBack.insert(popId);
-        }
-      };
-      // Try scheduling any pending push
-      if (ongoingsFront.count(pushId) && critValsFront.empty() && k + 1 >= i) {
-        hasPushed = true;
-        clearFrontExceptPop();
-      } else if (ongoingsBack.count(pushId) && critValsBack.empty() &&
-                 k + 1 >= j) {
-        hasPushed = true;
-        clearBackExceptPop();
+    }
+
+    // Sanity check must be done per scheduling of operations to keep an O(1)
+    // time complexity
+    auto sanityCheck = [&](const value_type& v) {
+      if (endedFront[v] == params.frontSizeByVal.at(v) && !nexti.count(v)) {
+        pendingFrontVals.erase(v);
+        nexti[v] = k + 1;
       }
-      if (!hasPushed) continue;
-      // Try scheduling any pending peeks
-      if (critValsFront.empty() && k + 1 >= i &&
-          (!pendingPop || !ongoingsFront.count(popId)))
-        clearFrontExceptPop();
-      if (critValsBack.empty() && k + 1 >= j &&
-          (!pendingPop || !ongoingsBack.count(popId)))
-        clearBackExceptPop();
-      // Try scheduling any pending pop
-      if (critValsFront.empty() && k + 1 >= i && pendingPop &&
-          ongoingsFront.count(popId) &&
-          endedFront + endedBack + 1 == params.sizeByVal.at(val)) {
-        nexti = k + 1;
-        if (distValHelper(nexti, nextj, distValMat, params)) {
+      if (endedBack[v] ==
+              params.sizeByVal.at(v) - params.frontSizeByVal.at(v) &&
+          !nextj.count(v)) {
+        pendingBackVals.erase(v);
+        nextj[v] = k + 1;
+      }
+      if (endedFront[v] + endedBack[v] + 1 == params.sizeByVal.at(v)) {
+        frontOngoing.markPopable(v);
+        backOngoing.markPopable(v);
+      }
+    };
+    // Try scheduling any pending push
+    if (critValsFront.empty() && k + 1 >= i) {
+      for (const value_type& v : frontOngoing.ongoingPush) {
+        ++endedFront[v];
+        frontOngoing.markPeekable(v);
+        backOngoing.markPeekable(v);
+        sanityCheck(v);
+      }
+      frontOngoing.ongoingPush.clear();
+    }
+    if (critValsBack.empty() && k + 1 >= j) {
+      for (const value_type& v : backOngoing.ongoingPush) {
+        ++endedBack[v];
+        frontOngoing.markPeekable(v);
+        backOngoing.markPeekable(v);
+        sanityCheck(v);
+      }
+      backOngoing.ongoingPush.clear();
+    }
+    // Try scheduling any pending peeks
+    if (critValsFront.empty() && k + 1 >= i) {
+      for (const value_type& v : frontOngoing.peekableNow) {
+        endedFront[v] += frontOngoing.ongoingPeek[v].size();
+        frontOngoing.ongoingPeek.erase(v);
+        sanityCheck(v);
+      }
+      frontOngoing.peekableNow.clear();
+    }
+    if (critValsBack.empty() && k + 1 >= j) {
+      for (const value_type& v : backOngoing.peekableNow) {
+        endedBack[v] += backOngoing.ongoingPeek[v].size();
+        backOngoing.ongoingPeek.erase(v);
+        sanityCheck(v);
+      }
+      backOngoing.peekableNow.clear();
+    }
+    // Try scheduling any pending pop
+    if (critValsFront.empty() && k + 1 >= i) {
+      for (const value_type& v : frontOngoing.popableNow) {
+        ++endedFront[v];
+        frontOngoing.ongoingPop.erase(v);
+        sanityCheck(v);
+        if (!invalidVals.count(v) &&
+            distValHelper(nexti.at(v), nextj.at(v), distValMat, params)) {
           distValMat[i][j] = true;
           return true;
         }
-        break;
       }
-      if (critValsBack.empty() && k + 1 >= j && pendingPop &&
-          ongoingsBack.count(popId) &&
-          endedFront + endedBack + 1 == params.sizeByVal.at(val)) {
-        nextj = k + 1;
-        if (distValHelper(nexti, nextj, distValMat, params)) {
+      frontOngoing.popableNow.clear();
+    }
+    if (critValsBack.empty() && k + 1 >= j) {
+      for (const value_type& v : backOngoing.popableNow) {
+        ++endedBack[v];
+        backOngoing.ongoingPop.erase(v);
+        sanityCheck(v);
+        if (!invalidVals.count(v) &&
+            distValHelper(nexti.at(v), nextj.at(v), distValMat, params)) {
           distValMat[i][j] = true;
           return true;
         }
-        break;
       }
+      backOngoing.popableNow.clear();
     }
   }
   distValMat[i][j] = false;
@@ -313,7 +347,7 @@ bool DequeLin::distVal(History& hist) {
     params.events.emplace_back(o.endTime, false, o);
     if (o.method == Method::PUSH_FRONT) params.pushFrontVals.insert(o.value);
     if (o.method == Method::POP_FRONT) params.popFrontVals.insert(o.value);
-    if (isFrontMethod(o.method)) ++params.frontSizeByVal[o.value];
+    params.frontSizeByVal[o.value] += isFrontMethod(o.method);
     ++params.sizeByVal[o.value];
   }
   std::sort(params.events.begin(), params.events.end());
