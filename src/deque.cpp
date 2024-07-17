@@ -203,8 +203,6 @@ bool DequeLin::distValHelper(
 
   for (int k = 0; k < n; ++k) {
     const auto& [_, isInv, o] = params.events[k];
-    if (!goodVals.count(o.value) && !params.oneSidedVals.count(o.value))
-      continue;
 
     if (isInv) {
       if (params.oneSidedVals.count(o.value) && isPop(o.method)) {
