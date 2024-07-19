@@ -11,7 +11,6 @@ using namespace polylin;
 int main(int argc, const char *argv[]) {
   if (argc < 2) return -1;
   OperationHistoryReader reader(argv[1]);
-  // EventHistoryReader reader(argv[1]);
   History hist = reader.getHist();
   std::string histType = reader.getHistTypeStr();
 
