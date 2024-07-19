@@ -41,18 +41,18 @@ inline Method getMethodFromStr(std::string str) {
     throw std::invalid_argument("Unknown method: " + str);
 }
 
-typedef int value_type;
+// typedef int value_type;
 typedef unsigned long long time_type;
 typedef unsigned int proc_type;
 typedef unsigned int id_type;
 
+#define DEFAULT_VALUE_TYPE int
 #define EMPTY_VALUE -1
 #define MIN_TIME std::numeric_limits<time_type>::lowest()
-#define MAX_TIME std::numeric_limits<time_type>::max()
 
+template <typename value_type>
 struct Operation {
   id_type id;
-  proc_type proc;
   Method method;
   value_type value;
   time_type startTime;
@@ -60,8 +60,8 @@ struct Operation {
 
   Operation() = delete;
 
-  Operation(proc_type proc, Method method, value_type value,
-            time_type startTime, time_type endTime)
+  Operation(Method method, value_type value, time_type startTime,
+            time_type endTime)
       : method(method), value(value), startTime(startTime), endTime(endTime) {
     static id_type globId = 0;
     id = ++globId;
@@ -91,25 +91,32 @@ struct Operation {
   }
 };
 
-inline bool operator<(const Operation& a, const Operation& b) {
+template <typename value_type>
+inline bool operator<(const Operation<value_type>& a,
+                      const Operation<value_type>& b) {
   return a.id < b.id;
 }
 
-inline bool operator==(const Operation& a, const Operation& b) {
+template <typename value_type>
+inline bool operator==(const Operation<value_type>& a,
+                       const Operation<value_type>& b) {
   return a.id == b.id;
 }
 
-inline bool operator!=(const Operation& a, const Operation& b) {
+template <typename value_type>
+inline bool operator!=(const Operation<value_type>& a,
+                       const Operation<value_type>& b) {
   return !(a == b);
 }
 
-typedef std::unordered_set<Operation> History;
+template <typename value_type>
+using History = std::unordered_set<Operation<value_type>>;
 
 }  // namespace polylin
 
-template <>
-struct std::hash<polylin::Operation> {
-  std::size_t operator()(const polylin::Operation& o) const {
+template <typename value_type>
+struct std::hash<polylin::Operation<value_type>> {
+  std::size_t operator()(const polylin::Operation<value_type>& o) const {
     return std::hash<polylin::id_type>()(o.id);
   }
 };

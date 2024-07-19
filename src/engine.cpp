@@ -10,16 +10,17 @@ using namespace polylin;
 
 int main(int argc, const char *argv[]) {
   if (argc < 2) return -1;
-  OperationHistoryReader reader(argv[1]);
-  History hist = reader.getHist();
+  HistoryReader<DEFAULT_VALUE_TYPE> reader(argv[1]);
+  History<DEFAULT_VALUE_TYPE> hist = reader.getHist();
   std::string histType = reader.getHistTypeStr();
 
   if (histType == "stack")
-    std::cout << StackLin().distVal(hist) << std::endl;
+    std::cout << StackLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
   else if (histType == "queue")
-    std::cout << QueueLin().distVal(hist) << std::endl;
+    std::cout << QueueLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
   else if (histType == "pqueue")
-    std::cout << PriorityQueueLin().distVal(hist) << std::endl;
+    std::cout << PriorityQueueLin<DEFAULT_VALUE_TYPE>().distVal(hist)
+              << std::endl;
   else if (histType == "deque")
-    std::cout << DequeLin().distVal(hist) << std::endl;
+    std::cout << DequeLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
 }

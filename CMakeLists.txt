@@ -6,10 +6,6 @@ set(CMAKE_CXX_FLAGS "-O3")
 project(PolyLin VERSION 1.0 LANGUAGES CXX)
 
 set(SOURCE
-  "src/stack.cpp"
-  "src/queue.cpp"
-  "src/deque.cpp"
-  "src/priorityqueue.cpp"
   "src/engine.cpp"
 )
 
