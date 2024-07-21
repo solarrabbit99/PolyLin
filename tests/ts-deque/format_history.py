@@ -12,18 +12,16 @@ dstFile = args.dest_file
 
 class Operation:
   def __init__(self) -> None:
-    self.proc = 0
     self.method = ''
     self.value = 0
     self.invTime = 0
     self.resTime = 0
   
   def __str__(self) -> str:
-    return ' '.join([str(self.proc), self.method, str(self.value), str(self.invTime), str(self.resTime)])
+    return ' '.join([self.method, str(self.value), str(self.invTime), str(self.resTime)])
 
 with open(srcFile, 'r') as src, open(dstFile, 'w') as dst:
   dst.write('# deque\n')
-  proc = 0
   while True:
     line = src.readline()
     if not line: break
@@ -31,8 +29,6 @@ with open(srcFile, 'r') as src, open(dstFile, 'w') as dst:
     tokens = line.split()
     
     prop = Operation()
-    prop.proc = proc
-    proc += 1
     switcher = {
       '>': 'push_front',
       '<': 'push_back',
