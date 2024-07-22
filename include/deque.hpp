@@ -6,22 +6,26 @@
 #include <unordered_set>
 #include <vector>
 
-#include "definitions.hpp"
+#include "base.hpp"
 #include "stack.hpp"
 
 namespace polylin {
 
 template <typename value_type>
-class DequeLin {
+class DequeLin : LinBase<value_type> {
   typedef Operation<value_type> oper_t;
   typedef History<value_type> hist_t;
 
  public:
+  DequeLin()
+      : LinBase<value_type>{{PUSH_FRONT, PUSH_BACK}, {POP_FRONT, POP_BACK}} {}
+
   // Assumption: at most one `PUSH`, valid deque oper_ts.
-  // Time complexity: O(n^4)
+  // Time complexity: O(n^3)
   bool distVal(hist_t& hist) {
     DistValParams params;
-    if (!extend(hist) || !getOneSidedVals(hist, params.oneSidedVals) ||
+    if (!LinBase<value_type>::extend(hist) ||
+        !getOneSidedVals(hist, params.oneSidedVals) ||
         !tune(hist, params.oneSidedVals))
       return false;
 
@@ -51,26 +55,6 @@ class DequeLin {
     std::unordered_set<value_type> pushFrontVals;
     std::unordered_set<value_type> popFrontVals;
   };
-
-  // Returns `false` if there is value where `POP` methods > `PUSH` methods.
-  // O(n)
-  bool extend(hist_t& hist) {
-    time_type maxTime = MIN_TIME;
-    std::unordered_map<value_type, int> pushPopDelta;
-    for (const oper_t& o : hist) {
-      if (isPush(o.method))
-        pushPopDelta[o.value]++;
-      else if (isPop(o.method))
-        pushPopDelta[o.value]--;
-      maxTime = std::max(maxTime, o.endTime);
-    }
-    for (const auto& [value, cnt] : pushPopDelta) {
-      if (cnt < 0) return false;
-      for (int i = 0; i < cnt; ++i)
-        hist.emplace(Method::POP_FRONT, value, maxTime + 1, maxTime + 2);
-    }
-    return true;
-  }
 
   // For distinct value restriction, return `false` if impossible to tune (e.g.
   // value has no `POP` oper_t) O(n)

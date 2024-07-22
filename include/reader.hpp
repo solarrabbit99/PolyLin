@@ -22,9 +22,7 @@ class HistoryReader {
     while (std::getline(f, line)) {
       std::stringstream ss{line};
       line = trim(line);
-      if (line.empty() || line[0] == '#' ||
-          std::count(line.begin(), line.end(), ' ') != 4)
-        continue;
+      if (line.empty() || line[0] == '#') continue;
 
       std::string methodStr;
       value_type value;

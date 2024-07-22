@@ -5,20 +5,22 @@
 #include <unordered_map>
 #include <vector>
 
-#include "definitions.hpp"
+#include "base.hpp"
 
 namespace polylin {
 
 template <typename value_type>
-class QueueLin {
+class QueueLin : LinBase<value_type> {
   typedef Operation<value_type> oper_t;
   typedef History<value_type> hist_t;
 
  public:
+  QueueLin() : LinBase<value_type>{{ENQ}, {DEQ}} {}
+
   // Assumption: at most one `ENQ`, valid queue operations.
   // Time complexity: O(n log n)
   bool distVal(hist_t& hist) {
-    if (!extend(hist) || !tune(hist) || !removeEmptyOps(hist)) return false;
+    if (!LinBase<value_type>::preprocess(hist)) return false;
 
     std::unordered_map<value_type, size_t> opByVal;
     std::vector<std::tuple<time_type, bool, oper_t>> enqEvents, otherEvents;
@@ -99,104 +101,6 @@ class QueueLin {
           }
         }
       }
-    }
-
-    return true;
-  }
-
- private:
-  // Returns `false` if there is value where `DEQ` methods > `ENQ` methods
-  bool extend(hist_t& hist) {
-    time_type maxTime = MIN_TIME;
-    std::unordered_map<value_type, int> enqDeqDelta;
-    for (const oper_t& o : hist) {
-      if (o.value == EMPTY_VALUE) continue;
-
-      if (o.method == Method::ENQ)
-        enqDeqDelta[o.value]++;
-      else if (o.method == Method::DEQ)
-        enqDeqDelta[o.value]--;
-      maxTime = std::max(maxTime, o.endTime);
-    }
-    for (const auto& [value, cnt] : enqDeqDelta) {
-      if (cnt < 0) return false;
-      for (int i = 0; i < cnt; ++i)
-        hist.emplace(Method::DEQ, value, maxTime + 1, maxTime + 2);
-    }
-    return true;
-  }
-
-  // For distinct value restriction, return `false` if impossible to tune (e.g.
-  // value has no `ENQ` operation)
-  bool tune(hist_t& hist) {
-    std::unordered_map<value_type, time_type> minResTime, maxInvTime;
-    std::unordered_map<value_type, oper_t> enqOp, deqOp;
-    for (const oper_t& o : hist) {
-      if (o.value == EMPTY_VALUE) continue;
-
-      if (!minResTime.count(o.value)) {
-        minResTime[o.value] = o.endTime;
-        maxInvTime[o.value] = o.startTime;
-      } else {
-        minResTime[o.value] = std::min(minResTime[o.value], o.endTime);
-        maxInvTime[o.value] = std::max(maxInvTime[o.value], o.startTime);
-      }
-
-      if (o.method == Method::ENQ) enqOp.emplace(o.value, o);
-      if (o.method == Method::DEQ) deqOp.emplace(o.value, o);
-    }
-    for (const auto& [value, resTime] : minResTime) {
-      if (!enqOp.count(value)) return false;
-      oper_t& valEnqOp = enqOp.at(value);
-      oper_t& valDeqOp = deqOp.at(value);
-      valEnqOp.endTime = resTime;
-      valDeqOp.startTime = maxInvTime[value];
-
-      if (valEnqOp.startTime >= valEnqOp.endTime ||
-          valDeqOp.startTime >= valDeqOp.endTime)
-        return false;
-
-      hist.erase(valEnqOp);
-      hist.erase(valDeqOp);
-      hist.emplace(valEnqOp);
-      hist.emplace(valDeqOp);
-    }
-    return true;
-  }
-
-  // Remove empty peek and deq operations
-  bool removeEmptyOps(hist_t& hist) {
-    std::vector<std::tuple<time_type, bool, oper_t>> events;
-    for (const oper_t& o : hist) {
-      events.emplace_back(o.startTime, true, o);
-      events.emplace_back(o.endTime, false, o);
-    }
-    std::sort(events.begin(), events.end());
-
-    std::unordered_set<id_type> runningEmptyOp;
-    std::unordered_set<value_type> critVal, endedVal;
-
-    for (const auto& [time, isInv, op] : events) {
-      if (op.value != EMPTY_VALUE) {
-        if (isInv) {
-          if (op.method == Method::DEQ) {
-            critVal.erase(op.value);
-            endedVal.insert(op.value);
-          }
-        } else {
-          if (op.method == Method::ENQ && !endedVal.count(op.value))
-            critVal.insert(op.value);
-        }
-      } else {
-        if (isInv)
-          runningEmptyOp.insert(op.id);
-        else if (runningEmptyOp.count(op.id))
-          return false;
-        else
-          hist.erase(op);
-      }
-
-      if (critVal.empty()) runningEmptyOp.clear();
     }
 
     return true;

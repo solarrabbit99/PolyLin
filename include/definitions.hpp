@@ -89,6 +89,15 @@ struct Operation {
     endTime = o.endTime;
     return *this;
   }
+
+  Operation& operator=(const Operation&& o) {
+    id = o.id;
+    method = o.method;
+    value = o.value;
+    startTime = o.startTime;
+    endTime = o.endTime;
+    return *this;
+  }
 };
 
 template <typename value_type>
