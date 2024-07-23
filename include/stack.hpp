@@ -26,6 +26,7 @@ class StackLin : private LinBase<value_type> {
     if (!LinBase<value_type>::preprocess(hist)) return false;
 
     flush(hist, critIntervalByVal);
+    if (hist.empty()) return true;
     size_t n = hist.size();
 
     std::unordered_map<time_type, value_type> startTimeToVal;

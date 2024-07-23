@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,11 +24,13 @@ class DequeLin : LinBase<value_type> {
   // Assumption: at most one `PUSH`, valid deque oper_ts.
   // Time complexity: O(n^3)
   bool distVal(hist_t& hist) {
+    if (!LinBase<value_type>::preprocess(hist)) return false;
+
     DistValParams params;
-    if (!LinBase<value_type>::extend(hist) ||
-        !getOneSidedVals(hist, params.oneSidedVals) ||
-        !tune(hist, params.oneSidedVals))
-      return false;
+    getOneSidedVals(hist, params.oneSidedVals);
+    if (!testOneSidedHists(hist, params.oneSidedVals)) return false;
+
+    removeConcurrentOneSided(hist, params.oneSidedVals);
 
     for (const oper_t& o : hist) {
       params.events.emplace_back(o.startTime, true, o);
@@ -56,12 +59,10 @@ class DequeLin : LinBase<value_type> {
     std::unordered_set<value_type> popFrontVals;
   };
 
-  // For distinct value restriction, return `false` if impossible to tune (e.g.
-  // value has no `POP` oper_t) O(n)
-  bool tune(hist_t& hist, const std::unordered_set<value_type>& oneSidedVals) {
+  // Remove one-sided values where all operations are concurrent
+  void removeConcurrentOneSided(
+      hist_t& hist, const std::unordered_set<value_type>& oneSidedVals) {
     std::unordered_map<value_type, time_type> minResTime, maxInvTime;
-    std::unordered_map<value_type, oper_t> pushOp, popOp;
-    std::unordered_map<value_type, std::unordered_set<oper_t>> peekOps;
     for (const oper_t& o : hist) {
       if (!minResTime.count(o.value)) {
         minResTime[o.value] = o.endTime;
@@ -70,69 +71,53 @@ class DequeLin : LinBase<value_type> {
         minResTime[o.value] = std::min(minResTime[o.value], o.endTime);
         maxInvTime[o.value] = std::max(maxInvTime[o.value], o.startTime);
       }
-
-      if (isPush(o.method)) pushOp.emplace(o.value, o);
-      if (isPop(o.method)) popOp.emplace(o.value, o);
-      if (isPeek(o.method)) peekOps[o.value].emplace(o);
     }
-    for (const auto& [value, resTime] : minResTime) {
-      if (!pushOp.count(value)) return false;
-      oper_t& valPushOp = pushOp.at(value);
-      oper_t& valPopOp = popOp.at(value);
-      valPushOp.endTime = resTime;
-      valPopOp.startTime = maxInvTime[value];
-
-      if (valPushOp.startTime >= valPushOp.endTime ||
-          valPopOp.startTime >= valPopOp.endTime)
-        return false;
-
-      hist.erase(valPushOp);
-      hist.erase(valPopOp);
-
-      if (valPushOp.endTime > valPopOp.startTime && oneSidedVals.count(value)) {
-        hist.erase(peekOps[value].begin(), peekOps[value].end());
-      } else {
-        hist.emplace(valPushOp);
-        hist.emplace(valPopOp);
-      }
+    hist_t dup;
+    for (const oper_t& o : hist) {
+      if (!oneSidedVals.count(o.value) ||
+          minResTime[o.value] < maxInvTime[o.value])
+        dup.emplace(o);
     }
-    return true;
+    std::swap(dup, hist);
   }
 
-  // O(n log n) for testing stack subinstance
-  bool getOneSidedVals(const hist_t& hist,
+  void getOneSidedVals(const hist_t& hist,
                        std::unordered_set<value_type>& vals) {
-    std::unordered_set<value_type> frontSidedVals, backSidedVals;
+    std::unordered_set<value_type> backVals;
     for (const oper_t& o : hist) {
       if (isFrontMethod(o.method))
-        frontSidedVals.insert(o.value);
+        vals.insert(o.value);
       else
-        backSidedVals.insert(o.value);
+        backVals.insert(o.value);
     }
-    vals = std::move(frontSidedVals);
-    for (const value_type& val : backSidedVals) {
+    for (const value_type& val : backVals) {
       if (vals.count(val))
         vals.erase(val);
       else
         vals.insert(val);
     }
-    // Test linearizability of subhist_t of values with only front or only back
+  }
+
+  // Test linearizability of subhist_t of values with only front or only back
+  // O(n log n)
+  bool testOneSidedHists(const hist_t& hist,
+                         std::unordered_set<value_type>& vals) {
     hist_t frontHist, backHist;
-    for (const oper_t& o : hist) {
-      if (!vals.count(o.value)) continue;
+    for (const oper_t& oldOp : hist) {
+      if (!vals.count(oldOp.value)) continue;
 
-      oper_t o2{o};
-      if (isPush(o.method))
-        o2.method = Method::PUSH;
-      else if (isPeek(o.method))
-        o2.method = Method::PEEK;
-      else if (isPop(o.method))
-        o2.method = Method::POP;
+      oper_t newOp{oldOp};
+      if (isPush(oldOp.method))
+        newOp.method = Method::PUSH;
+      else if (isPeek(oldOp.method))
+        newOp.method = Method::PEEK;
+      else if (isPop(oldOp.method))
+        newOp.method = Method::POP;
 
-      if (isFrontMethod(o.method)) {
-        frontHist.emplace(std::move(o2));
+      if (isFrontMethod(oldOp.method)) {
+        frontHist.emplace(std::move(newOp));
       } else
-        backHist.emplace(std::move(o2));
+        backHist.emplace(std::move(newOp));
     }
 
     StackLin<value_type> stackLin;
