@@ -58,6 +58,198 @@ class DequeLin : LinBase<value_type> {
     std::unordered_set<value_type> popFrontVals;
   };
 
+  class DequeLinImpl {
+    struct OngoingSet {
+      std::unordered_set<value_type> ongoingPush;
+      std::unordered_map<value_type, std::unordered_set<id_type>> ongoingPeek;
+      std::unordered_set<value_type> ongoingPop;
+      std::unordered_set<value_type> peekable, popable;
+      std::unordered_set<value_type> peekableNow, popableNow;
+
+      void insert(const oper_t& o) {
+        if (DequeLin::isPush(o.method))
+          ongoingPush.insert(o.value);
+        else if (DequeLin::isPop(o.method)) {
+          ongoingPop.insert(o.value);
+          if (popable.count(o.value)) popableNow.insert(o.value);
+        } else {
+          ongoingPeek[o.value].insert(o.id);
+          if (peekable.count(o.value)) peekableNow.insert(o.value);
+        }
+      }
+
+      void erase(const oper_t& o) {
+        if (DequeLin::isPush(o.method))
+          ongoingPush.erase(o.value);
+        else if (DequeLin::isPop(o.method)) {
+          ongoingPop.erase(o.value);
+          popableNow.erase(o.value);
+        } else {
+          ongoingPeek[o.value].erase(o.id);
+          if (ongoingPeek[o.value].empty()) {
+            ongoingPeek.erase(o.value);
+            peekableNow.erase(o.value);
+          }
+        }
+      }
+
+      bool contains(const oper_t& o) {
+        if (DequeLin::isPush(o.method))
+          return ongoingPush.count(o.value);
+        else if (DequeLin::isPop(o.method))
+          return ongoingPop.count(o.value);
+        else
+          return ongoingPeek.count(o.value) && ongoingPeek[o.value].count(o.id);
+      }
+
+      void markPeekable(const value_type& v) {
+        peekable.insert(v);
+        if (ongoingPeek.count(v)) peekableNow.insert(v);
+      }
+
+      void markPopable(const value_type& v) {
+        popable.insert(v);
+        if (ongoingPop.count(v)) popableNow.insert(v);
+      }
+    };
+
+   public:
+    DequeLinImpl(const std::unordered_set<value_type>& goodVals,
+                 const DistValParams& params)
+        : pendingFrontVals(goodVals),
+          pendingBackVals(goodVals),
+          freeFront{false},
+          freeBack{false},
+          params{params} {};
+    void setFreeFront(bool b) { freeFront = b; }
+    void setFreeBack(bool b) { freeBack = b; }
+    void schedulePushes(time_type k) {
+      if (freeFront) {
+        for (const value_type& v : ongoingFront.ongoingPush) {
+          ++scheduledFront[v];
+          ongoingFront.markPeekable(v);
+          ongoingBack.markPeekable(v);
+          latestFront[v] = k;
+          check(v);
+        }
+        ongoingFront.ongoingPush.clear();
+      }
+      if (freeBack) {
+        for (const value_type& v : ongoingBack.ongoingPush) {
+          ++scheduledBack[v];
+          ongoingFront.markPeekable(v);
+          ongoingBack.markPeekable(v);
+          latestBack[v] = k;
+          check(v);
+        }
+        ongoingBack.ongoingPush.clear();
+      }
+    }
+    void schedulePeeks(time_type k) {
+      if (freeFront) {
+        for (const value_type& v : ongoingFront.peekableNow) {
+          scheduledFront[v] += ongoingFront.ongoingPeek[v].size();
+          ongoingFront.ongoingPeek.erase(v);
+          latestFront[v] = k;
+          check(v);
+        }
+        ongoingFront.peekableNow.clear();
+      }
+      if (freeBack) {
+        for (const value_type& v : ongoingBack.peekableNow) {
+          scheduledBack[v] += ongoingBack.ongoingPeek[v].size();
+          ongoingBack.ongoingPeek.erase(v);
+          latestBack[v] = k;
+          check(v);
+        }
+        ongoingBack.peekableNow.clear();
+      }
+    }
+    std::vector<value_type> schedulePops(time_type k) {
+      std::vector<value_type> poppedValues;
+      if (freeFront) {
+        for (const value_type& v : ongoingFront.popableNow) {
+          ++scheduledFront[v];
+          ongoingFront.ongoingPop.erase(v);
+          if (!invalidVals.count(v)) poppedValues.push_back(v);
+          check(v);
+        }
+        ongoingFront.popableNow.clear();
+      }
+      if (freeBack) {
+        for (const value_type& v : ongoingBack.popableNow) {
+          ++scheduledBack[v];
+          ongoingBack.ongoingPop.erase(v);
+          if (!invalidVals.count(v)) poppedValues.push_back(v);
+          check(v);
+        }
+        ongoingBack.popableNow.clear();
+      }
+      return poppedValues;
+    }
+    void addOngoing(const oper_t& o) {
+      if (isFrontMethod(o.method))
+        ongoingFront.insert(o);
+      else
+        ongoingBack.insert(o);
+    }
+    bool isScheduled(const oper_t& o) {
+      if (isFrontMethod(o.method)) return !ongoingFront.contains(o);
+      return !ongoingBack.contains(o);
+    }
+    // Sanity check must be done per scheduling of oper_ts to keep an O(1)
+    // time complexity
+    void check(const value_type& v) {
+      if (scheduledFront[v] == params.frontSizeByVal.at(v))
+        pendingFrontVals.erase(v);
+      if (scheduledBack[v] ==
+          params.sizeByVal.at(v) - params.frontSizeByVal.at(v))
+        pendingBackVals.erase(v);
+      if (scheduledFront[v] + scheduledBack[v] + 1 == params.sizeByVal.at(v)) {
+        ongoingFront.markPopable(v);
+        ongoingBack.markPopable(v);
+      }
+    }
+    void invalidateOthersFront(const value_type& v) {
+      std::unordered_set<value_type> tmp;
+      for (const value_type& v2 : pendingFrontVals)
+        if (v2 != v)
+          invalidVals.insert(v2);
+        else
+          tmp.insert(v);
+      std::swap(pendingFrontVals, tmp);
+    }
+    void invalidateOthersBack(const value_type& v) {
+      std::unordered_set<value_type> tmp;
+      for (const value_type& v2 : pendingBackVals)
+        if (v2 != v)
+          invalidVals.insert(v2);
+        else
+          tmp.insert(v);
+      std::swap(pendingBackVals, tmp);
+    }
+    void invalidate(const value_type& v) {
+      invalidVals.insert(v);
+      pendingFrontVals.erase(v);
+      pendingBackVals.erase(v);
+    }
+
+    std::unordered_map<value_type, time_type> latestFront;
+    std::unordered_map<value_type, time_type> latestBack;
+
+   private:
+    bool freeFront;
+    bool freeBack;
+    OngoingSet ongoingFront;
+    OngoingSet ongoingBack;
+    std::unordered_set<value_type> pendingFrontVals;
+    std::unordered_set<value_type> pendingBackVals;
+    std::unordered_set<value_type> invalidVals;
+    std::unordered_map<value_type, size_t> scheduledFront;
+    std::unordered_map<value_type, size_t> scheduledBack;
+    const DistValParams& params;
+  };
+
   // Remove one-sided values where all operations are concurrent
   void removeConcurrentOneSided(
       hist_t& hist, const std::unordered_set<value_type>& oneSidedVals) {
@@ -208,199 +400,54 @@ class DequeLin : LinBase<value_type> {
 
     // Interate through good values and check if schedulable
     std::unordered_set<value_type> critValsFront, critValsBack;
-    std::unordered_map<value_type, size_t> endedFront, endedBack;
-    std::unordered_map<value_type, size_t> nexti, nextj;
-    DequeLin<value_type>::OngoingSet frontOngoing, backOngoing;
-    std::unordered_set<value_type> invalidVals;
-    std::unordered_set<value_type> pendingFrontVals(goodVals),
-        pendingBackVals(goodVals);
+    DequeLinImpl impl{goodVals, params};
 
     for (int k = 0; k < n; ++k) {
       const auto& [_, isInv, o] = params.events[k];
-
-      if (isInv) {
-        if (params.oneSidedVals.count(o.value) && isPop(o.method)) {
+      auto updateFree = [&]() {
+        if (isInv && isPop(o.method)) {
           if (isFrontMethod(o.method))
             critValsFront.erase(o.value);
           else
             critValsBack.erase(o.value);
-        } else if (goodVals.count(o.value)) {
-          if (isFrontMethod(o.method))
-            frontOngoing.insert(o);
-          else
-            backOngoing.insert(o);
-        }
-      } else {
-        if (params.oneSidedVals.count(o.value) && isPush(o.method)) {
+        } else if (!isInv && isPush(o.method)) {
           if (isFrontMethod(o.method))
             critValsFront.insert(o.value);
           else
             critValsBack.insert(o.value);
-        } else if (goodVals.count(o.value)) {
-          if (frontOngoing.contains(o) || backOngoing.contains(o)) {
-            invalidVals.insert(o.value);
-            pendingFrontVals.erase(o.value);
-            pendingBackVals.erase(o.value);
-          }
-          if (isFrontMethod(o.method)) {
-            std::unordered_set<value_type> tmp;
-            for (const value_type& v : pendingFrontVals)
-              if (v != o.value)
-                invalidVals.insert(v);
-              else
-                tmp.insert(v);
-            std::swap(pendingFrontVals, tmp);
-          } else {
-            std::unordered_set<value_type> tmp;
-            for (const value_type& v : pendingBackVals)
-              if (v != o.value)
-                invalidVals.insert(v);
-              else
-                tmp.insert(v);
-            std::swap(pendingBackVals, tmp);
-          }
         }
-      }
-
-      // Sanity check must be done per scheduling of oper_ts to keep an O(1)
-      // time complexity
-      auto sanityCheck = [&](const value_type& v) {
-        if (endedFront[v] == params.frontSizeByVal.at(v) && !nexti.count(v)) {
-          pendingFrontVals.erase(v);
-          nexti[v] = k + 1;
-        }
-        if (endedBack[v] ==
-                params.sizeByVal.at(v) - params.frontSizeByVal.at(v) &&
-            !nextj.count(v)) {
-          pendingBackVals.erase(v);
-          nextj[v] = k + 1;
-        }
-        if (endedFront[v] + endedBack[v] + 1 == params.sizeByVal.at(v)) {
-          frontOngoing.markPopable(v);
-          backOngoing.markPopable(v);
-        }
+        impl.setFreeFront(critValsFront.empty() && k + 1 >= i);
+        impl.setFreeBack(critValsBack.empty() && k + 1 >= j);
       };
+
+      if (params.oneSidedVals.count(o.value))
+        updateFree();
+      else if (goodVals.count(o.value)) {
+        if (isInv) {
+          impl.addOngoing(o);
+        } else {
+          if (!impl.isScheduled(o)) impl.invalidate(o.value);
+          if (isFrontMethod(o.method))
+            impl.invalidateOthersFront(o.value);
+          else
+            impl.invalidateOthersBack(o.value);
+        }
+      }
       // Try scheduling any pending push
-      if (critValsFront.empty() && k + 1 >= i) {
-        for (const value_type& v : frontOngoing.ongoingPush) {
-          ++endedFront[v];
-          frontOngoing.markPeekable(v);
-          backOngoing.markPeekable(v);
-          sanityCheck(v);
-        }
-        frontOngoing.ongoingPush.clear();
-      }
-      if (critValsBack.empty() && k + 1 >= j) {
-        for (const value_type& v : backOngoing.ongoingPush) {
-          ++endedBack[v];
-          frontOngoing.markPeekable(v);
-          backOngoing.markPeekable(v);
-          sanityCheck(v);
-        }
-        backOngoing.ongoingPush.clear();
-      }
+      impl.schedulePushes(k + 1);
       // Try scheduling any pending peeks
-      if (critValsFront.empty() && k + 1 >= i) {
-        for (const value_type& v : frontOngoing.peekableNow) {
-          endedFront[v] += frontOngoing.ongoingPeek[v].size();
-          frontOngoing.ongoingPeek.erase(v);
-          sanityCheck(v);
-        }
-        frontOngoing.peekableNow.clear();
-      }
-      if (critValsBack.empty() && k + 1 >= j) {
-        for (const value_type& v : backOngoing.peekableNow) {
-          endedBack[v] += backOngoing.ongoingPeek[v].size();
-          backOngoing.ongoingPeek.erase(v);
-          sanityCheck(v);
-        }
-        backOngoing.peekableNow.clear();
-      }
+      impl.schedulePeeks(k + 1);
       // Try scheduling any pending pop
-      if (critValsFront.empty() && k + 1 >= i) {
-        for (const value_type& v : frontOngoing.popableNow) {
-          ++endedFront[v];
-          frontOngoing.ongoingPop.erase(v);
-          sanityCheck(v);
-          if (!invalidVals.count(v) &&
-              distValHelper(nexti.at(v), nextj.at(v), distValMat, params)) {
-            distValMat[i][j] = true;
-            return true;
-          }
+      for (const value_type& v : impl.schedulePops(k + 1))
+        if (distValHelper(impl.latestFront.at(v), impl.latestBack.at(v),
+                          distValMat, params)) {
+          distValMat[i][j] = true;
+          return true;
         }
-        frontOngoing.popableNow.clear();
-      }
-      if (critValsBack.empty() && k + 1 >= j) {
-        for (const value_type& v : backOngoing.popableNow) {
-          ++endedBack[v];
-          backOngoing.ongoingPop.erase(v);
-          sanityCheck(v);
-          if (!invalidVals.count(v) &&
-              distValHelper(nexti.at(v), nextj.at(v), distValMat, params)) {
-            distValMat[i][j] = true;
-            return true;
-          }
-        }
-        backOngoing.popableNow.clear();
-      }
     }
     distValMat[i][j] = false;
     return false;
   }
-
-  struct OngoingSet {
-    std::unordered_set<value_type> ongoingPush;
-    std::unordered_map<value_type, std::unordered_set<id_type>> ongoingPeek;
-    std::unordered_set<value_type> ongoingPop;
-    std::unordered_set<value_type> peekable, popable;
-    std::unordered_set<value_type> peekableNow, popableNow;
-
-    void insert(const oper_t& o) {
-      if (DequeLin::isPush(o.method))
-        ongoingPush.insert(o.value);
-      else if (DequeLin::isPop(o.method)) {
-        ongoingPop.insert(o.value);
-        if (popable.count(o.value)) popableNow.insert(o.value);
-      } else {
-        ongoingPeek[o.value].insert(o.id);
-        if (peekable.count(o.value)) peekableNow.insert(o.value);
-      }
-    }
-
-    void erase(const oper_t& o) {
-      if (DequeLin::isPush(o.method))
-        ongoingPush.erase(o.value);
-      else if (DequeLin::isPop(o.method)) {
-        ongoingPop.erase(o.value);
-        popableNow.erase(o.value);
-      } else {
-        ongoingPeek[o.value].erase(o.id);
-        if (ongoingPeek[o.value].empty()) {
-          ongoingPeek.erase(o.value);
-          peekableNow.erase(o.value);
-        }
-      }
-    }
-
-    bool contains(const oper_t& o) {
-      if (DequeLin::isPush(o.method))
-        return ongoingPush.count(o.value);
-      else if (DequeLin::isPop(o.method))
-        return ongoingPop.count(o.value);
-      else
-        return ongoingPeek.count(o.value) && ongoingPeek[o.value].count(o.id);
-    }
-
-    void markPeekable(const value_type& v) {
-      peekable.insert(v);
-      if (ongoingPeek.count(v)) peekableNow.insert(v);
-    }
-
-    void markPopable(const value_type& v) {
-      popable.insert(v);
-      if (ongoingPop.count(v)) popableNow.insert(v);
-    }
-  };
 };
 
 }  // namespace polylin
