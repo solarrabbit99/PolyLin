@@ -1,0 +1,134 @@
+%!TEX root=../main.tex
+
+\section{Simplifying History}
+
+In this section we go through key observations that are helpful for deriving results presented in the remaining of the paper.
+
+\subsection{Common Lemmas}
+
+The linearization of a history depends less on the exact numeric value of time but the order in which operations are scheduled within these discrete pockets of time intervals. These time intervals can be represented as a sorted list of invocation and response events. Having this discretization of time, we have the absolute freedom to ``move'' the linearizations within an interval (between consecutive invocation and response events) without changing the overall legality. Suppose we have $n$ operations in a history $H$, then we have $2n$ events, giving $2n-1$ distinct intervals for which operations can be linearized into (operations cannot be linearized before the first invocation event or last response event).
+
+\begin{lemma}[Tightening Lemma]\label{tight-hist}
+    Let $H$ be a history and $t_1 < t_2$ be two rational numbers such that for all $o \in H$, $t_1 < \resTimeOf{o}$ and $\invTimeOf{o} < t_2$. Given any linearization $l$, there exists another linearization $l'$ with the same derived sequence as $l$ such that $t_1 < l'(o) < t_2$ for all $o \in H$.
+\end{lemma}
+\begin{proof}
+    Let ${\sf res}_{\min} = \min\set{\resTimeOf{o} \;|\; o \in H}$ be the minimum response time in $H$. Let $S = \set{o_1, o_2, ..., o_k}$ be the maximal subset of operations for which $l(o) \leq {\sf res}_{\min}$ for $o \in S$, and $l(o_1) < l(o_2) < ... < l(o_k)$. By assumption, $t_1 < {\sf res}_{\min}$. We construct an assignment of time $l'$ where $l'(o) = l(o)$ for $o \in H \setminus S$, and $l'(o_i) = \max\set{t_1 + \frac{i}{|S|+1}({\sf res}_{\min} - t_1),l(o_i)}$ for $o \in S$. Notice that $\invTimeOf{o} < l(o) \leq l'(o) < {\sf res}_{\min} \leq \resTimeOf{o}$ for all $o \in S$. Hence, $l$ is indeed a linearization of $H$. Secondly, the derived sequences of $l$ and $l'$ remains the same (i.e. $l'(o_1) < l'(o_2) < ... < l'(o_k) < {\sf res}_{\min}$). Lastly, $t_1 < l'(o)< {\sf res}_{\min}$ for $o \in S$.
+
+    Symmetrically, we can construct a reassignment $l''$ from $l'$ for operations in the set $\set{o\in H \;|\; l'(o) > \max\set{\invTimeOf{o} \;|\; o \in H}}$ such that $l''(o) < t_2$ for $o \in S$. The conclusion follows.
+\end{proof}
+
+\begin{lemma}[Flushing Lemma]\label{flush-hist}
+    Let $H$ be a history and $t_1 < t_2$ be two rational numbers such that for all $o \in H$, $t_1 < \resTimeOf{o}$ and $\invTimeOf{o} < t_2$. Given a linearization $l$, then there exists:
+    \begin{enumerate}
+        \item a linearization $l'$ such that $l'(o) \leq \min\set{t_2, l(o)}$ for all $o \in H$, and
+        \item a linearization $l''$ such that $\max\set{t_1, l(o)} \leq l''(o)$ for all $o \in H$, where
+    \end{enumerate}
+    the derived sequence of $l'$ and $l''$ is the same as that of $l$.
+\end{lemma}
+\begin{proof}
+    By Lemma \ref{tight-hist}, there exists legal linearization $l'''$ such that $t_1 < l'''(o) < t_2$ for all $o \in H$ while preserving the same derived sequence. We then construct $l'$ where $l'(o) = \min\set{l'''(o), l(o)}$ for all $o \in H$. Clearly, $l'(o) \leq \min\set{t_2, l(o)}$. Secondly, $l'$ must be a linearization since $\invTimeOf{o} \leq l'''(o), l(o) \leq \resTimeOf{o}$.
+
+Let $o_1, o_2 \in H$ be two operations such that $l(o_1) < l(o_2)$, and thus, $l'''(o_1) < l'''(o_2)$. Suppose $l'(o_1) \geq l'(o_2)$. By construction, $l'(o_1)$ is one of $l(o_1)$ and $l'''(o_1)$. Without loss of generality, assume $l'(o_1) = l(o_1)$. Then it must be the case that $l'(o_2) \leq l'(o_1) = l(o_1) < l(o_2)$. Since $l'(o_2) < l(o_2)$, we have $l'(o_2) = l'''(o_2)$ (again, $l'(o_2)$ is one of $l(o_2)$ and $l'''(o_2)$ by construction). However, since $l'''(o_1) < l'''(o_2)$, we have that $l'''(o_1) < l'(o_1) = \min\set{l'''(o_1), l(o_1)}$, contradiction. Hence, $l'$ preserves the order of the derived sequence (i.e. $l'(o_1) < l'(o_2)$ for all $o_1, o_2 \in H$ where $l(o_1) < l(o_2)$).
+
+    Symmetrically, $l''$ can be constructed in the same way. The conclusion follows.
+\end{proof}
+
+\subsection{Special Methods}
+In the list of ADTs we are about to study in this paper, we characterize some of the common behaviours that is useful in simplifying a given history. In the algorithmic perspective, some linear time preprocessing can be critical in providing elegant solutions with the guaranteed correctness.
+
+Firstly, we define a special set of ``add'' methods $\methods_\minsert \subseteq \methods$. Operations with add methods (``add'' operations) intuitively inserts the given value into the object. In the stack data type, $\methods_\minsert = \set{\push}$. In the deque data type, $\methods_\minsert = \set{\pushfront, \pushback}$. These add operations usually executes successfully regardless of the prior state of the object (i.e. $\returnOf{o} =\true$), with the exception of the set data type, where an $\minsert$ operation fails if the value is already in the set.
+
+Secondly, we define another special set of ``remove'' methods $\methods_\remove \subseteq \methods$. Operation with remove methods (``remove'' operations) intuitively remove the given value from the object. In the stack data type, $\methods_\remove = \set{\pop}$. In the deque data type, $\methods_\remove = \set{\popfront, \popback}$. These remove operations usually returns a unique value depending on the prior state of the object (e.g. $\pop$ removes the top-most value in a stack object), with the exception of the set data type, where a $\remove$ operation provides the value to be removed as the argument, and returns $\true$ when the value is previously within the set.
+
+\subsection{Distinct Values}
+Notice that in the general Monitoring Linearizability (ML) problem, values are allowed to be added more than once into a data type. In this paper, we require all added values in an input history, $H$, to be distinct. More formally, for all values $v \in \vals_H$, there must be a unique operation $o\in H$ where $\argOf{o} = v$, $\returnOf{o}=\true$ and $\methodOf{o}\in \methods_\minsert$. This restriction is practical as we can provide unique identifiers for each value inserted. Consequently, all removed values in an input history, $H$, must also be distinct. More formally, for all values $v \in \vals_H$, there must be a unique operation $o\in H$ where $\returnOf{o} = v$ and $\methodOf{o}\in \methods_\remove$. As for the set history, there must be a unique operation $o\in H$ where $\argOf{o} = v$, $\returnOf{o} = \true$ and $\methodOf{o}\in \methods_\remove$. Our result shows that the ML problem is tractable for these data types under the distinct value restriction.
+
+\subsection{Well-Matched and Extended Histories}
+Having defined the add and remove operations of a data type, we can perform some preprocessing on any given history to produce another history that satisfies extra properties. In particular, we would like each added value to be removed by the end of the history, returning the data type to the initial empty state. If that is the case, the history is said to be ``well-matched''. The well-matched property simplifies our approach in analysing the ``lifetime'' of any given value in a history. The ``lifetime'' of a value is the time interval for which the object contains the given value in a given linearization. If a history is well-matched, then we have the ``lifetime'' of any given value, $v$, to be contained within the operations on $v$.
+
+\begin{definition}[Well-Matched]\label{well-matched}
+    Let $H$ be a history. A history is said to be \emph{well-matched} if for each value $v\in\vals_H$, there exists two unique operations $o_\minsert$ and $o_\remove$ such that:
+    \begin{enumerate}
+        \item $\methodOf{o_\minsert} \in \methods_\minsert$, $\argOf{o_\minsert} = v$, and $\returnOf{o_\minsert} = \true$, and
+        \item $\methodOf{o_\remove} \in \methods_\remove$, $\returnOf{o_\remove} = v$ ($\argOf{o_\remove} = v$, and $\returnOf{o_\remove} = \true$ for the case of a set)
+    \end{enumerate}
+\end{definition}
+
+Fortunately, there is a simple linear time procedure to obtain a well-matched history from any given history. The resulting history, if it exists, is also guaranteed to preserve linearizability. The key is to identify a default $\remove$ operation, $\remove_d \in \methods_\remove$ that can be applied to all remaining values in the data type regardless of the state of the data type. For example, $\remove_d = \popback$ is a valid default remove operation for deque as all values remaining in the deque at the end of an execution can be removed via $\pushback$ in some arbitrary order.
+
+\begin{lemma}[Extended Histories]\label{stack_ext}
+    Given history $H$, let $H_e$ denote an extended history of $H$ by appending concurrent $\remove_d$ operations such that $H_e$ is well-matched. If no such $H_e$ exists, $H$ is not linearizable. Otherwise, $H$ is linearizable iff $H_e$ is linearizable.
+\end{lemma}
+\begin{proof}
+\begin{itemize}
+    \item[($\Rightarrow$)] All elements within the data type at the end of $H$ can be removed by safely scheduling the newly added $\remove_d$ operations in any arbitrary order.
+    \item[($\Leftarrow$)] Sequential specifications are prefix-closed. Hence, a legal linearization of $H_e$ contains a legal linearization for $H$ as prefix.
+\end{itemize}
+\end{proof}
+
+For the remaining of this paper, we shall assume that any given history is well-matched.
+
+\subsection{Non-Trivial Histories}
+
+Among histories that are well-matched, it is also useful to eliminate histories that witness violations of linearizability within a single value. More formally, a \emph{non-trivial} history $H$ is a history where $H_v$ is linearizable for all values $v \in \vals_H$. Furthermore, we assert that trivial histories of all data types discussed in this paper are non-linearizable.
+
+\begin{proposition}\label{one-value-lin}
+    Given a linearizable history $H$. For any $v\in \vals_H$, $H_v$ is also linearizable.
+\end{proposition}
+
+For the case of stack, queue, deque and priority queue histories, we observe that a linearization of a well-matched subhistory $H_v$ must linearize the $\minsert$ operation on a value $v$, $o_{\minsert(v)}$, first. Hence, $o_{\minsert(v)}$ must not be linearized after the response of other operations in $H_v$. Similarly, the $\remove$ operation on a value $v$, $o_{\remove(v)}$, must be linearized last. Hence, $o_{\remove(v)}$ must not be linearized before the invocation of other operations in $H_v$. We will also see in later sections that sets treat values differently, for which the following simplification of histories does not directly apply.
+
+\begin{proposition}\label{hist-simple}
+    Given a history $H$. Let $H_s$ denote a non-trivialized history derived from $H$ by:
+    \begin{enumerate}
+        \item setting $\resTimeOf{o_{\minsert(v)}} = \min\set{\resTimeOf{o} \;|\; o\in H_v}$ for all $v\in\vals_H$, and
+        \item setting $\invTimeOf{o_{\remove(v)}} = \max\set{\invTimeOf{o} \;|\; o\in H_v}$ for all $v\in\vals_H$
+    \end{enumerate}
+    $H$ is not linearizable if $H_s$ is not a valid history. Otherwise, $H$ is linearizable iff $H_s$ is.
+\end{proposition}
+
+Reader may verify that $H_s$ in Proposition \ref{hist-simple} is indeed a non-trivial history for stacks, queues, deques and priority queues. For the remaining of this paper, we shall assume that any given history is non-trivialized by the way of Proposition \ref{hist-simple} for these data types.
+
+\subsection{Empty Operations}
+In this section, we aim to further simplify our history to exclude operations that assert the object to be empty (as per its initial state) in a given history. More formally, an operation $o$ is an \emph{empty operation} if $\valOf{o} = \varepsilon$. For example, a $\pop()\Rightarrow\varepsilon$ operation on a stack object must be executed when the stack is empty. Given history $H$, we use $H_\varepsilon = \set{o \in H \;|\; \valOf{o} = \varepsilon}$ to denote the maximal subhistory comprising empty operations. We assume that the data types of interest have sequential specifications where empty operations are scheduled when all prior operations are well-matched by Definition \ref{well-matched} (i.e. all inserted elements are removed). All of sets, stacks, queues, priority queues, and deques satisfy this property.
+
+\begin{proposition}\label{empty-matched}
+    Given a linearizable history $H$ with legal linearization $l$. For each $o \in H_\varepsilon$, the subhistories $H_1' = \set{o' \in H \;|\; l(o') < l(o)}$ and $H_2' = \set{o' \in H \;|\; l(o) < l(o')}$ are well-matched.
+\end{proposition}
+
+Additionally, empty operations are read-only. Specifically, a legal linearization for $H$ projected to $H\setminus H_\varepsilon$ is also a legal linearization with respect to the specifications of set, stack, queue, deque, and priority queue.
+
+\begin{proposition}\label{empty-sub-lin}
+    Given a linearizable history $H$. The subhistory $H\setminus H_\varepsilon$ is linearizable.
+\end{proposition}
+
+For a given linearizable well-matched history $H$, we may assume that any well-matched subhistory $H' \subseteq H$ to also be linearizable. We state here an even stronger proposition.
+
+\begin{proposition}\label{reduce-one-value}
+    Given a linearizable history $H$. For any $v\in \vals_H$, $H\setminus H_v$ is also linearizable.
+\end{proposition}
+
+\begin{corollary}\label{reduce-well-matched}
+	Given a linearizable history $H$. Any well-matched subhistory $H' \subseteq H$ is also linearizable.
+\end{corollary}
+
+In fact, Proposition \ref{one-value-lin} is also a corollary of Proposition \ref{reduce-one-value}. It may perhaps not yet seem apparent why Proposition \ref{reduce-one-value} holds, but it will be shown to be a direct consequence of the characterizations of the sequential specifications we provide later.
+
+\begin{lemma}\label{empty-reduce}
+    Given history $H$. $H$ is linearizable iff $H\setminus H_\varepsilon$ is linearizable, and for each $o \in H_\varepsilon$, there exists a time $t \in (\invTimeOf{o}, \resTimeOf{o})$, and a well-matched subhistory $H_1' \subseteq H\setminus \set{o}$, such that $H_2' = H \setminus H_1'\setminus \set{o}$ is also well-matched and:
+    \begin{enumerate}
+        \item for all $o'_1 \in H_1'$, $\invTimeOf{o'_1} < t$, and
+        \item for all $o'_2 \in H_2'$, $t < \resTimeOf{o'_2}$.
+    \end{enumerate}
+\end{lemma}
+\begin{proof}
+    \begin{itemize}
+        \item[($\Rightarrow$)] $H\setminus H_\varepsilon$ is linearizable by Proposition \ref{empty-sub-lin}. Assume a legal linearization $l$. For each $o \in H_\varepsilon$, let $t = l(o)$. It is clear that $t\in(\invTimeOf{o}, \resTimeOf{o})$. Let $H_1' = \set{o'\in H \;|\; l(o') < l(o)}$ and $H_2' = H \setminus H_1'\setminus \set{o}$. By Proposition \ref{empty-matched}, $H_1'$ and $H_2'$ must be well-matched. Additionally, for each $o'\in H_1'$, $\invTimeOf{o} < l(o) < t$. Finally, for each $o' \in H_2'$, $t < l(o') < \resTimeOf{o'}$.
+
+        \item[($\Leftarrow$)] Let $H_\varepsilon = \set{o_1, o_2, ..., o_k}$, and $H_i'$ and $t_i$ be respectively a well-matched history and a time that satisfy the above two properties for operation $o_i$, $1 \leq i \leq k$. Without loss of generality, assume $t_i < t_{i+1}$ for all $1 \leq i < k$. It is clear that for each $1 \leq i \leq k$, $H_i'' = H_i' \setminus H_\varepsilon \setminus \bigcup_{1\leq j<i}{H_j'}$ is also well-matched. Since $H_i'' \subseteq H \setminus H_\varepsilon$ and $H \setminus H_\varepsilon$ is linearizable, $H_i''$ is also linearizable by Corollary \ref{reduce-well-matched}. Notice that for all $o\in H_i''$, $t_{i-1} < \resTimeOf{o}$ and $\invTimeOf{o} < t_i$. Hence, there exists a legal linearization $l_i$ of $H_i''$ such that $t_{i-1} < l_i(o) < t_i$ by Lemma \ref{tight-hist} (assume $t_0$ to be 0). Similarly, there must also exist a legal linearization $l_{k+1}$ of $H_{k+1}'' = H \setminus H_\varepsilon \setminus \bigcup_{1\leq j \leq k}{H_j'}$ such that $t_k < l_{k+1}(o)$ for all $o \in H_{k+1}''$. Let $l_\varepsilon$ be a linearization of $H_\varepsilon$ where $l_\varepsilon(o_i) = t_i$. Reader may verify that the union of the linearizations $l_\varepsilon, l_1, l_2, ..., l_{k+1}$ is indeed a legal linearization of $H$.
+    \end{itemize}
+\end{proof}
+
+\input{algos/empty-check}
+
+\algoref{empty-algo} presents a $O(n \log n)$ procedure, where $n$ is the number of operations in the given history $H$, for verifying whether the two properties presented in Lemma \ref{empty-reduce} hold for all empty operations in $H$. $RunningOp$ represents the set of ongoing empty operations that has yet to fulfill the two properties; $UnmatchedVal$ represents the set of values, $v$, for which the subhistories on the values, $H_v$, cannot be subsets of subhistories $H_1'$ or $H_2'$ of $H\setminus \set{o}$ (as defined in Lemma \ref{empty-reduce}) for any empty operation $o\in RunningOp$ and $t$ in the current time interval; $AllInvokedVal$ represents values that shall no longer be considered for $CritVal$, and is used to avoid edge-cases where the last invocation of $H_v$ precedes its first response. By Lemma \ref{empty-reduce}, a given history $H$ is not linearizable if $\EmptyCheck{H} = \false$. Otherwise, empty operations can be safety removed from the given history for free without affecting its admittance.

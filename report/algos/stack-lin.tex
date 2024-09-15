@@ -1,0 +1,57 @@
+%!TEX root=../main.tex
+
+\begin{algorithm}[t]
+\caption{Linearizability Monitoring for Stack Histories}
+\algolabel{stack-algo}
+\myproc{\StackLin{$H$}}{
+\tcp{Let $OpByVal$ be a hashmap of values to a hashtable of operations}
+\lFor{$o\in H$}
+{
+    $OpByVal[\valOf{o}]$.insert($o$)
+}
+\;
+$Events \gets \bigcup_{o\in H}\set{\tuple{\resTimeOf{o}, 0, o}, \tuple{\invTimeOf{o}, 1, o}}$\;
+Sort $Events$ in ascending order\;
+\tcp{Let $RunningOp$ be a hashmap of values to a hashtable of operations, and $CritVal$ and $EndedVal$ be hashtables}
+\For{$\tuple{t, e, o} \in Events$}
+{
+    \If{$e = 1$}
+    {
+        $RunningOp[\valOf{o}]$.insert($o$)\;
+
+        \If{$\methodOf{o} = \poll$}
+        {
+            $CritVal$.remove($\valOf{o}$)\;
+            $EndedVal$.insert($\valOf{o}$)\;
+        }
+    }
+    \Else
+    {
+        $RunningOp[\valOf{o}]$.remove($o$)\;
+
+        \lIf{$\methodOf{o} = \push$ \AND \NOT $EndedVal$.contains($\valOf{o}$)}{ $CritVal$.insert($\valOf{o}$)}
+    }
+    \;
+    \If{$CritVal$.empty()}{
+        \For{$o \in RunningOp$}
+        {
+            $OpByVal[\valOf{o}]$.remove($o$)\;
+            \lIf{$OpByVal[\valOf{o}]$.empty()}{ \Return \StackLin{$H\setminus H_{\valOf{o}}$}}
+        }
+        $RunningOp$.clear()
+    }
+    \ElseIf {$|CritVal| = 1$}
+    {
+        $v \gets CritVal[0]$\;
+        \For{$o \in RunningOp[v]$}
+        {
+            $OpByVal[\valOf{o}]$.remove($o$)\;
+            \lIf{$OpByVal[\valOf{o}]$.empty()}{ \Return \StackLin{$H\setminus H_{\valOf{o}}$}}
+        }
+        $RunningOp$.remove($v$)\;
+    }
+}
+
+\Return false
+}
+\end{algorithm}

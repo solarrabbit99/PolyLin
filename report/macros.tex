@@ -1,0 +1,98 @@
+%!TEX root=./main.tex
+\let\euscr\mathscr
+\graphicspath{ {images/} }
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newcommand{\problemStatement}[3]{%
+  \begin{center}
+  \begin{tabularx}{\columnwidth}{@{}lX@{}}
+  \toprule
+  \multicolumn{2}{@{}c@{}}{\textsc{#1}}\tabularnewline
+  \midrule
+  \bfseries INSTANCE: & #2 \\
+  \bfseries QUESTION: & #3 \\
+  \bottomrule
+  \end{tabularx}
+  \end{center}
+}
+\newtheorem{problem}{Problem}
+\newtheorem*{problem*}{Problem}
+
+\newcommand{\set}[1]{\{#1\}}
+\newcommand{\tuple}[1]{\langle#1\rangle}
+\newcommand{\nats}{\mathbb{N}}
+\newcommand{\rats}{\mathbb{Q}}
+\newcommand{\true}{{\sf true}}
+\newcommand{\false}{{\sf false}}
+
+\newcommand{\vals}{\euscr{V}}
+\newcommand{\methods}{\euscr{M}}
+\newcommand{\Times}{\euscr{T}}
+\newcommand{\methodOf}[1]{{\sf m}(#1)}
+\newcommand{\procOf}[1]{{\sf p}(#1)}
+\newcommand{\valOf}[1]{{\sf v}(#1)}
+\newcommand{\argOf}[1]{{\sf arg}(#1)}
+\newcommand{\returnOf}[1]{{\sf ret}(#1)}
+\newcommand{\invTimeOf}[1]{{\sf inv}(#1)}
+\newcommand{\resTimeOf}[1]{{\sf res}(#1)}
+\newcommand{\SetSpec}{T_{\tt set}}
+\newcommand{\StackSpec}{T_{\tt stack}}
+\newcommand{\QueueSpec}{T_{\tt queue}}
+\newcommand{\PQueueSpec}{T_{\tt p.queue}}
+\newcommand{\DequeSpec}{T_{\tt deque}}
+
+\newcommand{\enq}{{\tt enq}}
+\newcommand{\deq}{{\tt deq}}
+\newcommand{\peek}{{\tt peek}}
+\newcommand{\push}{{\tt push}}
+\newcommand{\pop}{{\tt pop}}
+\newcommand{\minsert}{{\tt add}}
+\newcommand{\poll}{{\tt poll}}
+\newcommand{\contains}{{\tt contains}}
+\newcommand{\remove}{{\tt remove}}
+\newcommand{\peekfront}{{\tt peek_{front}}}
+\newcommand{\pushfront}{{\tt push_{front}}}
+\newcommand{\popfront}{{\tt pop_{front}}}
+\newcommand{\peekback}{{\tt peek_{back}}}
+\newcommand{\pushback}{{\tt push_{back}}}
+\newcommand{\popback}{{\tt pop_{back}}}
+
+\newcommand{\perm}[2]{{\sf permissive}_#2(#1)}
+\newcommand{\getperm}{{\tt getPermissive}}
+\newcommand{\getoverlap}{{\tt getOverlapping}}
+\newcommand{\rmsub}{{\tt removeSubhistory}}
+\newcommand{\init}{{\tt initialize}}
+
+%%%%%% Macros for algo %%%%%%%%
+\newcommand{\seclabel}[1]{\label{sec:#1}}
+\newcommand{\secref}[1]{Section~\ref{sec:#1}}
+\newcommand{\algolabel}[1]{\label{algo:#1}}
+\newcommand{\algoref}[1]{Algorithm~\ref{algo:#1}}
+\SetKwProg{myfun}{function}{}{}
+\SetKwProg{myproc}{procedure}{}{}
+\SetKwProg{myhandler}{handler}{}{}
+\SetKwFunction{EmptyCheck}{EmptyCheck}
+\SetKwFunction{SetLin}{SetLin}
+\SetKwFunction{StackLin}{StackLin}
+\SetKwFunction{DequeLin}{DequeLin}
+\SetKwFunction{QueueLin}{QueueLin}
+\SetKwFunction{PQLin}{PQLin}
+\SetKwFunction{MPV}{MaxPermVals}
+\SetKwInput{Input}{Input}
+\SetKwInOut{Output}{Output}
+\SetKw{Let}{let}
+\SetKw{Break}{break}
+\SetKw{Continue}{continue}
+\SetKw{AND}{and}
+\SetKw{OR}{or}
+\SetKw{NOT}{not}
+\SetKw{declare}{declare}
+\SetKw{report}{report}
+\SetKw{exit}{exit}
+\SetKwFor{Foreach}{for each}{}{}%
+\SetKwFor{RepTimes}{repeat}{times}{end}
+\DontPrintSemicolon

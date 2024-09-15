@@ -1,0 +1,86 @@
+%!TEX root=../main.tex
+
+\section{Linearizability for the Queue Data structure}
+
+We define the signature of a FIFO queue object to be the following:
+\begin{enumerate*}
+    \item $\enq(x) \Rightarrow \allowbreak \true$ inserts $x$ onto the back of the queue
+    \item $\peek() \Rightarrow x$ retrieves the value at the front of the queue that is currently $x$
+    \item $\deq() \Rightarrow x$ removes the value from the front of the queue that is currently $x$.
+\end{enumerate*}
+The queue is initialized to be empty. We define the ML problem on a queue to be the following:
+
+\begin{problem*}[Monitoring Linearizability for Queue (MLQ)]
+   Given a queue history $H$ with distinct values, is $H$ linearizable?
+\end{problem*}
+
+Like how we dealt with MLS, it is essential to establish some properties of a legal linearization for queue too. In particular, we observe that the relative positions of any pair of elements within a queue also stays consistent throughout their lifetimes in the data type. In essence, if element $a$ is in front of $b$ in the queue at some point in time, there exists no point in time where $b$ can be in front of $a$. As a simple illustration of why it is the case, suppose $a$ is in front of $b$ at some point in time. It is clear that $a$ must be inserted first. However, the assumption that $b$ is in front of $a$ at another point in time asserts that we have $b$ inserted before $a$, which is a contradiction as each value is inserted into the queue at most once according to the distinct value restriction. We can use this definitive behaviour of the consistent relative positions of elements within the data type to derive the algorithm.
+
+Given a queue history $H$, let $l$ be some linearization such that $l$ is legal on $H_v$ for $v \in \vals_H$. We define $<_l$ as a binary relation on values such that $v_1 <_l v_2$ if
+\begin{enumerate*}
+    \item $l(o_{\enq(v_1)}) < l(o_{\enq(v_2)})$, or
+    \item there exist two operations $o_1 \in H_{v_1}$ and $o_2 \in H_{v_2}$, such that $\set{\methodOf{o_1}, \methodOf{o_2}} \subseteq \set{\peek, \deq}$ and $l(o_1) < l(o_2)$.
+\end{enumerate*}
+
+\begin{proposition}\label{queue-partial-def}
+    $l$ is legal iff $<_l$ is a total order.
+\end{proposition}
+
+Intuitively, $v_1 <_l v_2$ denotes $v_1$ to be conceptually in front of $v_2$ in the queue in the linearization $l$. Since we relate two values by the order they are enqueued, $<_l$ is total. Simply put, it suffices to ensure that the order for which the values are enqueued is consistent with the order they are retrieved via $\peek$ and $\deq$ operations. We can also see that Proposition \ref{reduce-one-value} follows naturally from Proposition \ref{queue-partial-def}. Consequently, there must exists a ``highest value'' in terms of the partial order $<_l$ given by any legal linearization $l$.
+
+
+\begin{definition}[Maximal Operation]    
+    Let $H$ be a history and $m$ be a method type. We say that $o$ is a maximal operation of type $m$ in $H$ if:
+    \begin{enumerate}
+        \item $\methodOf{o} = m$, and
+        \item for every $o'\in H$ such that $\methodOf{o'} = m$, we have $\resTimeOf{o} > \invTimeOf{o'}$.
+    \end{enumerate}
+\end{definition}
+
+\begin{definition}[\MPV]
+    Let $H$ be a queue history with distinct values. We define $\MPV_H \subseteq \vals$ to be the set of values such that for each $v \in \MPV_H$:
+    \begin{enumerate}
+        \item $o_{\enq(v)}$ is a maximal $\enq$ operation, and
+        % \item $\resTimeOf{o_{\enq(v)}} > \max\set{\invTimeOf{o'} \;| \; o' \in H\setminus H_v \land \methodOf{o'} = \enq}$, and
+        \item for all $o \in H_v$ where $\methodOf{o} \in \set{\peek, \deq}$, $\resTimeOf{o} > \max\set{\invTimeOf{o'} \;|\; o' \in H\setminus H_v}$
+    \end{enumerate}
+\end{definition}
+
+\begin{lemma}\label{mpv-empty}
+    Let $H$ be a non-empty queue history with distinct values. If $\MPV_H = \varnothing$, $H$ is not linearizable.
+\end{lemma}
+\begin{proof}
+    Suppose $H$ is linearizable and let $l$ be some legal linearization of $H$. Let $v$ be the last value to be inserted into the queue via $\enq$ operation and, thus also the last to be peeked and dequeued. We will show that $v \in \MPV_H$.
+    
+    First, we show that $o_{\enq(v)}$ must be a maximal enqueue operation of $H$. Assume on the contrary that this is not the case. Then, there exists $v’ \neq v$ such that $\resTimeOf{o_{\enq(v)}} < \invTimeOf{o_{\enq(v')}}$. Then $l(o_{\enq(v)}) < l(o_{\enq(v')})$. This is a contradiction as $v$ is the last to be inserted in $l$.
+    
+    Next, let $H_v|_{\set{\peek, \deq}} = \set{o \in H_v \;|\; \methodOf{o} \in \set{\peek, \deq}}$. We show that for all $o \in H_v|_{\set{\peek, \deq}}$, we have $\resTimeOf{o} > \max\set{\invTimeOf{o} \;|\; o \in H\setminus H_v}$. Suppose otherwise, there exists $o \in H_v|_{\set{\peek, \deq}}$ such that $\resTimeOf{o} \leq \max\set{\invTimeOf{o} \;|\; o \in H\setminus H_v}$, then there exists $o' \in H\setminus H_v$ such that $\resTimeOf{o} \leq \invTimeOf{o'}$. Then $l(o) < l(o')$. This is a contradiction as $o_{\peek(v)}$ and $o_{\deq(v)}$ can only be scheduled after all other values are removed from the queue.
+\end{proof}
+
+Similar to MLS, we can safely remove operations on values in \MPV from a given queue history $H$ without affecting its admittance.
+
+\begin{lemma}\label{mpv-reduce}
+    Let $H$ be a non-empty queue history. For all $v \in \MPV_H$, $H\setminus H_v$ is linearizable iff $H$ is linearizable.
+\end{lemma}
+\begin{proof}
+\begin{itemize}
+    \item[($\Leftarrow$)] See Proposition \ref{reduce-one-value}.
+    \item[($\Rightarrow$)] Suppose $l$ is a legal linearization of $H\setminus H_v$. We then let $t_1$ be some rational number such that $\max\set{\invTimeOf{o} \;|\; o \in H\setminus H_v} < t_1 < \min\set{\resTimeOf{o} \;|\; o\in H_v \land \methodOf{o} \in \set{\peek, \deq}}$. By Lemma \ref{flush-hist}, there exists legal linearization $l'$ of $H$ such that $l'(o) < t_1$ for all $o\in H\setminus H_v$.
+    
+    Now let $H_\enq = \set{o\in H\setminus H_v \;|\; \methodOf{o} = \enq}$. Notice that $l'$ projected to $H_\enq$ must also be a legal linearization of $H_\enq$. We then let $t_2$ be some rational number such that $\max\set{\invTimeOf{o} \;|\; o \in H_\enq} < t_2 < \resTimeOf{o_{\enq(v)}}$. Again, by Lemma \ref{flush-hist}, there exists legal linearization $l''$ of $H_\enq$ such that $l''(o) \leq \min\set{l'(o), t_2}$ for all $o\in H_\enq$. Additionally, we also define $l''(o) = l'(o)$ for all $o \in H\setminus H_v \setminus H_\enq$. $l''$ must be a legal linearization of $H\setminus H_v$ as the induced order of $\enq$ operations remains the same as $l'$ and similarly for $\peek$ and $\deq$ operations. Additionally, for all $o_1, o_2\in H \setminus H_v$ where $\valOf{o_1} = \valOf{o_2}$, $\methodOf{o_1} = \enq$, and $\methodOf{o_2} \in \set{\peek, \deq}$, $l''(o_1) \leq l'(o) < l'(o_2) = l''(o_2)$.
+
+    Now we can safely assign $l''(o_{\enq(v)})$ such that $t_2 < l''(o_{\enq(v)}) < \resTimeOf{o_{\enq(v)}}$, and similarly $l''(o) > \max\set{l''(o_{\enq(v)}), t_1}$ for all $o \in H_v\setminus\set{o_{\enq(v)}}$. Reader may verify that $l''$ is indeed a legal linearization of $H$. The conclusion follows.
+\end{itemize}
+\end{proof}
+
+\input{algos/queue-lin}
+
+\begin{theorem}
+    MLQ for histories with distinct values restriction is solvable in $O(n \log{n})$ time complexity, where $n$ is the size of the given history.
+\end{theorem}
+\begin{proof}
+
+\algoref{queue-algo} depicts an unoptimized version of the algorithm. In this algorithm, we are given extended well-matched queue history, $H$, with distinct values. The initialization and population of $PushEvents$, $MinPeekPopRes$, $MaxInv$, and $PeekPopEvents$ takes $O(n)$ time, where $n$ is the size of $H$. Sorting of $PushEvents$, $MaxInv$ and $PeekPopEvents$ takes $O(n \log{n})$ time. Populating $MaxPush$ and $\MPV_H$ takes linear time. It is guaranteed that the algorithm terminates within $O(n)$ iterations, giving the algorithm a total time complexity of $O(n^2 \log{n})$.
+
+The correctness of the algorithm is given by Lemma \ref{mpv-empty} and Lemma \ref{mpv-reduce}. Reader may notice that the recursion unnecessarily reconstructs (and sorts) $PushEvents$, $MinPeekPopRes$, $MaxInv$ and $PeekPopEvents$. Additionally, values previously included in $MaxPush$ must necessarily either be in $\MPV_H$ or remain in the next recursion. It follows that a continued iteration on $PushEvents$ and $PeekPopEvents$ suffices to discover the next $\MPV$ values, giving rise to an optimized $O(n \log{n})$ time complexity.
+\end{proof}

@@ -1,0 +1,30 @@
+%!TEX root=../main.tex
+
+\begin{algorithm}[t]
+\caption{Linearizability Monitoring for Set Histories}
+\algolabel{set-algo}
+\myproc{\SetLin{$H$}}{
+\tcp{Let MinRes and MaxInv be hashtables with elements of $\vals_H$ as key}
+\For{$o \in H$}
+{
+    \If{$\returnOf{o} = \true$}
+    {
+        ${\tt MinRes}[\argOf{o}] \gets \min\set{{\tt MinRes}[\argOf{o}], \resTimeOf{o}}$\;
+        ${\tt MaxInv}[\argOf{o}] \gets \max\set{{\tt MaxInv}[\argOf{o}], \invTimeOf{o}}$\;
+    }
+}
+\For{$o \in H$}
+{
+    \If{$\returnOf{o} = \true$}
+    {
+        \lIf{$\methodOf{o} = \minsert$ \AND $\invTimeOf{o} > {\tt MinRes}[\argOf{o}]$}{\Return false}
+        \lIf{$\methodOf{o} = \remove$ \AND $\resTimeOf{o} < {\tt MaxInv}[\argOf{o}]$}{\Return false}
+    }
+    \Else
+    {
+        \lIf{${\tt MinRes}[\argOf{o}] < \invTimeOf{o}$ \AND $\resTimeOf{o} < {\tt MaxInv}[\argOf{o}]$}{\Return false}
+    }
+}
+\Return true
+}
+\end{algorithm}

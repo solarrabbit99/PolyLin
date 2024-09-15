@@ -1,0 +1,30 @@
+%!TEX root=../main.tex
+
+\section{Preliminaries}
+In this section, we define basic background on concurrent histories and the linearizability monitoring problem, necessary for our presentation. 
+
+\subsection{Operation}
+The focus of this work is to build algorithms for checking linearizability of concurrent histories. A history essentially records operations executed in a concurrent program. For the purpose of this work, we can model each operation as a tuple $o = \tuple{id, m, arg, ret, t_{\sf inv}, t_{\sf res}}$. Here, $id$ is a unique identifier for the operation $o$, $m \in \methods$ denotes the method of the underlying ADT, $arg \in \vals^*$ denotes the argument of the operation $o$ and is a sequence of values, $ret$ denotes the return value of the operation $o$, and $t_{\sf inv}, t_{\sf res} \in \rats_{\geq 0}$ are timestamps denoting the invocation and response times for the operation $o$, where $t_{\sf inv} < t_{\sf res}$. We will use $\methodOf{o}$, $\argOf{o}$, $\returnOf{o}$, $\invTimeOf{o}$ and $\resTimeOf{o}$ to denote respectively the method, argument, return value, invocation time and response time of operation $o$. We will drop the unique identifier $id$ when clear from context, and use the shorthand $m(arg)\Rightarrow ret$ to denote the operation. For example, in the context of a set object, the operation $\minsert(1)\Rightarrow \true$ denotes a successful insertion of value $1$, and the operation $\remove(1)\Rightarrow \false$ denotes an unsuccessful removal of value $1$.
+
+In the description of operations, it is common to group operations into processes for which the interval of the operations within a process, denoted by their invocation and response times, must be disjoint. In our study, we do not require the process of an operation to be identified. In fact, we may assume a system of unbounded number of processes, for which each operation may be executed independently on a separately allocated process.
+
+Furthermore, all operations discussed in this paper has at most one value associated with an element. In the previous set example, $\minsert(1)\Rightarrow \true$ has the value $1$ associated to an element inserted into the set, while $\true$ is a return value solely to denote the successful execution of the operation. On the other hand, a stack operation $\pop()\Rightarrow 2$ has the value $2$ associated with the element being removed from the stack. We will use $\valOf{o} \in \set{\argOf{o}, \returnOf{o}}$ to denote the value associated with an element.
+
+Since linearizability is a \emph{local} property~\cite{Wing1990}, the monitoring problem for histories with multiple objects is linear-time reducible to the corresponding problem for individual objects. As a consequence, we omit describing the object identifier in our formalism.
+
+\subsection{History}
+A history $H$ is a set of operations. For instance, the queue history $H_1 = \set{o_1 = \tuple{1, \enq, 3, \true, 1, 3}, o_2 = \tuple{2, \deq, \epsilon, 3, 2, 4}}$ comprises of an enqueue operation of value $3$, and a dequeue operation of value $3$. We let $\Times_H$ denote the set $\bigcup_{o\in H}\{\invTimeOf{o}, \resTimeOf{o}\}$ of invocation and response times in $H$, and $\vals_H$ denote the set $\set{\valOf{o} \;|\; o\in H}$ of values of operations in $H$. We also use $H_v = \set{o\in H \;|\; \valOf{o} =v}$ to denote the subhistory of $H$ on value $v$.
+
+\subsection{Linearizations}
+A \textit{linearization} of history $H$ is an injective mapping $l: H \to \rats_{\geq 0}$ of operations to timestamps such that for every $o \in H$, $\invTimeOf{o} < l(o) < \resTimeOf{o}$. In other words, a linearization is a total order of the operations of a history that also respects their invocation and response times. In the running queue example, a possible linearization of $H_1$ is given by $l(o_1) = 2.5$ and $l(o_2) = 3.5$.
+
+\subsection{Sequential Specifications}
+The sequential specification of an object expresses all possible behaviours of the object when the object is invoked by a sequential client. Formally, \emph{sequential specification} of a (concurrent) object is a prefix-closed set of sequences of \emph{abstract} operations, each of which is a pair $\tuple{m, v}$, $m\in\methods,v\in\vals$ (alternatively represented as $m(v)$).
+The sequential specification of a queue, as an example, will include ``$\enq(1), \enq(2), \deq(1), \deq(2)$'' but not ``$\enq(1), \deq(2), \enq(2)$''. Let $o_1, o_2, ..., o_n$ be the sequence of operations ordered by linearization $l$ of a history. Then the sequence $\tuple{\methodOf{o_1}, \valOf{o_1}}, \tuple{\methodOf{o_2}, \valOf{o_2}}, ..., \tuple{\methodOf{o_n}, \valOf{o_n}}$ of abstract operations is said to be the \emph{derived sequence} of $l$. A linearization $l$ of a history $H$ is said to be \emph{legal} with respect to a sequential specification $T$ when the derived sequence of $l$ is in $T$.
+
+This formal definition of sequential specification, although precise, does not dictate the notation used to define such a set. In this paper, we identify a partial order on values of a sequence of abstract operations. Then we characterize the membership of the sequence in the sequential specification based on the partial order. Intuitively, the partial order characterizes the spatial and temporal order of any pair of values in the ADT. For the case of priority queues, where spatial order does not make much sense, we relate the temporal constraints with the priority constraints via the partial order.
+
+\begin{problem*}[Monitoring Linearizability]
+Let $T$ be a sequential specification comprising of all correct sequential behaviors of some concurrent object. The linearizability monitoring question then asks, given a single concurrent history $H$ of some implementation of the object, is there a linearization $l$ of $H$ that is legal with respect to $T$?
+If such a linearization exists, then $H$ is said to be \emph{linearizable}.
+\end{problem*}

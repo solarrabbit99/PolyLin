@@ -1,0 +1,39 @@
+%!TEX root=../main.tex
+
+\begin{algorithm}[t]
+\caption{Empty Operations Check}
+\algolabel{empty-algo}
+\myproc{\EmptyCheck{$H$}}{
+$Events \gets \bigcup_{o\in H}\set{\tuple{\resTimeOf{o}, 0, o}, \tuple{\invTimeOf{o}, 1, o}}$\;
+Sort $Events$ in ascending order\;
+\tcp{Let $RunningOp$, $UnmatchedVal$ and $AllInvokedVal$ be hash-based sets}
+\For{$\tuple{t, e, o} \in Events$}
+{
+    \If{$\valOf{o} = \varepsilon$}
+    {
+        \lIf {$e = 1$} { $RunningOp$.insert($o$) }
+        \lElseIf {$o \in RunningOp$} { return false }
+    }
+    \Else
+    {
+        \If {$e = 1$}
+        {
+            \If {$\methodOf{o}\in\methods_\remove$}
+            {
+                $UnmatchedVal$.remove($\valOf{o}$) \tcp{Last invocation of $H_{\valOf{o}}$}
+                $AllInvokedVal$.insert($\valOf{o}$)\;
+            }
+        }
+        \Else
+        {
+            \If {$\methodOf{o}\in\methods_\minsert$ \AND $\valOf{o} \notin AllInvokedVal$}
+            {
+                $UnmatchedVal$.insert($\valOf{o}$) \tcp{First response of $H_{\valOf{o}}$}
+            }
+        }
+    }
+    \lIf {$UnmatchedVal = \varnothing$} { $RunningOp \gets \varnothing$ }
+}
+\Return true\;
+}
+\end{algorithm}
