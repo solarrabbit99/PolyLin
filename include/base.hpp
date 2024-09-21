@@ -156,9 +156,11 @@ class LinBase {
             hist.emplace(std::move(addOp));
           }
           // End operation
-          oper_t op{otherOps[o.value].remove(o)};
-          op.endTime = ++time;
-          hist.emplace(std::move(op));
+          if (otherOps[o.value].contains(o)) {
+            oper_t op{otherOps[o.value].remove(o)};
+            op.endTime = ++time;
+            hist.emplace(std::move(op));
+          }
         }
       }
     }
