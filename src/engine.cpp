@@ -4,6 +4,7 @@
 #include "priorityqueue.hpp"
 #include "queue.hpp"
 #include "reader.hpp"
+#include "set.hpp"
 #include "stack.hpp"
 
 using namespace polylin;
@@ -15,8 +16,8 @@ int main(int argc, const char *argv[]) {
 
   if (histType == "set") {
     History<DEFAULT_VALUE_TYPE> hist = reader.getExtHist();
-    std::cout << StackLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
-    return;
+    std::cout << SetLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
+    return 0;
   }
 
   History<DEFAULT_VALUE_TYPE> hist = reader.getHist();

@@ -23,13 +23,13 @@ class SetLin : LinBase<value_type> {
       } else if (o.method == REMOVE && o.retVal == false) {
         o.method = CONTAINS;
       }
-      hist2.emplace(std::move(hist2));
+      hist2.emplace(std::move(o));
     }
 
     if (!LinBase<value_type>::extend(hist2)) return false;
 
     std::unordered_map<value_type, time_type> minRes, maxInv;
-    for (const oper_t& o : hist) {
+    for (const oper_t& o : hist2) {
       if (o.retVal) {
         minRes[o.value] = minRes.count(o.value)
                               ? std::min(minRes[o.value], o.endTime)
@@ -40,7 +40,7 @@ class SetLin : LinBase<value_type> {
       }
     }
 
-    for (const oper_t& o : hist) {
+    for (const oper_t& o : hist2) {
       if (o.retVal) {
         if (o.method == INSERT && o.startTime > minRes[o.value]) return false;
         if (o.method == REMOVE && o.endTime < maxInv[o.value]) return false;
