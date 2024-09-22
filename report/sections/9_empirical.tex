@@ -27,7 +27,7 @@
   \legend{ms queue,treiber stack,priority queue}
   \end{axis}
 \end{tikzpicture}
-\caption{Time taken vs. number of operations}
+\caption{All algorithms run in $O(n \log{n})$ in practice}
 \label{graph-oper}
 \end{figure}
 
@@ -45,6 +45,7 @@ The experiments were conducted on Scal's implementation of Michael Scott queue a
 \begin{figure}
 \begin{tikzpicture}
   \begin{axis}[
+      boxplot,
       legend style={font=\small},
       legend pos=north west,
       ylabel=runtime (s),
@@ -67,6 +68,6 @@ The experiments were conducted on Scal's implementation of Michael Scott queue a
   \legend{ms queue,treiber stack,priority queue}
   \end{axis}
 \end{tikzpicture}
-\caption{Time taken vs. number of producers}
+\caption{Number of threads has limited effect on runtime}
 \label{graph-proc}
 \end{figure}

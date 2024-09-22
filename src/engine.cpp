@@ -11,8 +11,15 @@ using namespace polylin;
 int main(int argc, const char *argv[]) {
   if (argc < 2) return -1;
   HistoryReader<DEFAULT_VALUE_TYPE> reader(argv[1]);
-  History<DEFAULT_VALUE_TYPE> hist = reader.getHist();
   std::string histType = reader.getHistTypeStr();
+
+  if (histType == "set") {
+    History<DEFAULT_VALUE_TYPE> hist = reader.getExtHist();
+    std::cout << StackLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;
+    return;
+  }
+
+  History<DEFAULT_VALUE_TYPE> hist = reader.getHist();
 
   if (histType == "stack")
     std::cout << StackLin<DEFAULT_VALUE_TYPE>().distVal(hist) << std::endl;

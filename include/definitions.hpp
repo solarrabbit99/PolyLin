@@ -20,6 +20,8 @@ enum Method {
   PEEK_BACK,
   INSERT,
   POLL,
+  CONTAINS,
+  REMOVE,
 };
 
 inline Method getMethodFromStr(std::string str) {
@@ -35,8 +37,10 @@ inline Method getMethodFromStr(std::string str) {
   if (str == "enq") return Method::ENQ;
   if (str == "deq") return Method::DEQ;
   if (str == "insert") return Method::INSERT;
-  if (str == "poll")
-    return Method::POLL;
+  if (str == "poll") return Method::POLL;
+  if (str == "contains") return Method::CONTAINS;
+  if (str == "remove")
+    return Method::REMOVE;
   else
     throw std::invalid_argument("Unknown method: " + str);
 }
@@ -57,29 +61,40 @@ struct Operation {
   value_type value;
   time_type startTime;
   time_type endTime;
+  bool retVal;
 
   Operation() = delete;
 
   Operation(Method method, value_type value, time_type startTime,
-            time_type endTime)
-      : method(method), value(value), startTime(startTime), endTime(endTime) {
+            time_type endTime, bool retVal)
+      : method(method),
+        value(value),
+        startTime(startTime),
+        endTime(endTime),
+        retVal(retVal) {
     static id_type globId = 0;
     id = ++globId;
   };
+
+  Operation(Method method, value_type value, time_type startTime,
+            time_type endTime)
+      : Operation(method, value, startTime, endTime, true) {};
 
   Operation(const Operation& o)
       : id(o.id),
         method(o.method),
         value(o.value),
         startTime(o.startTime),
-        endTime(o.endTime){};
+        endTime(o.endTime),
+        retVal(o.retVal) {};
 
   Operation(const Operation&& o)
       : id(o.id),
         method(o.method),
         value(o.value),
         startTime(o.startTime),
-        endTime(o.endTime){};
+        endTime(o.endTime),
+        retVal(o.retVal) {};
 
   Operation& operator=(const Operation& o) {
     id = o.id;
@@ -87,6 +102,7 @@ struct Operation {
     value = o.value;
     startTime = o.startTime;
     endTime = o.endTime;
+    retVal = o.retVal;
     return *this;
   }
 
@@ -96,6 +112,7 @@ struct Operation {
     value = o.value;
     startTime = o.startTime;
     endTime = o.endTime;
+    retVal = o.retVal;
     return *this;
   }
 };

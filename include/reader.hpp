@@ -35,6 +35,28 @@ class HistoryReader {
     return hist;
   }
 
+  History<value_type> getExtHist() {
+    std::ifstream f(path);
+    std::string line;
+    History<value_type> hist;
+    while (std::getline(f, line)) {
+      std::stringstream ss{line};
+      line = trim(line);
+      if (line.empty() || line[0] == '#') continue;
+
+      std::string methodStr;
+      value_type value;
+      bool retVal;
+      time_type startTime, endTime;
+
+      ss >> methodStr >> value >> retVal >> startTime >> endTime;
+
+      hist.emplace(getMethodFromStr(methodStr), value, startTime, endTime,
+                   retVal);
+    }
+    return hist;
+  }
+
   std::string getHistTypeStr() {
     std::ifstream f(path);
     std::string line;

@@ -24,12 +24,12 @@ class LinBase {
     return extend(hist) && tune(hist) && removeEmpty(hist);
   }
 
-  // Extend chooses the first remove method as default remove method
+  // Extend chooses the first remove method as default remove method, O(n)
   bool extend(hist_t& hist) const {
     time_type maxTime = MIN_TIME;
     std::unordered_set<value_type> addOps, removeOps, allOps;
     for (const oper_t& o : hist) {
-      if (o.value == EMPTY_VALUE) continue;
+      if (o.value == EMPTY_VALUE || o.retVal == false) continue;
 
       allOps.insert(o.value);
       if (adds.count(o.method) && !addOps.insert(o.value).second)
@@ -41,7 +41,7 @@ class LinBase {
     for (const value_type& value : allOps) {
       if (!addOps.count(value)) return false;
       if (!removeOps.count(value))
-        hist.emplace(*removes.begin(), value, maxTime + 1, maxTime + 2);
+        hist.emplace(*removes.begin(), value, maxTime + 1, maxTime + 2, true);
     }
     return true;
   };
@@ -168,6 +168,8 @@ class LinBase {
   }
 
   // Only works on histories simplifed via `tune(hist)`
+  // Note that empty operations can be of any method,
+  // the only requirement being `value == EMPTY_VALUE`
   bool removeEmpty(hist_t& hist) const {
     std::vector<std::tuple<time_type, bool, oper_t>> events;
     for (const oper_t& o : hist) {
