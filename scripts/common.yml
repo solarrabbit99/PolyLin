@@ -11,6 +11,7 @@ mappings:
     "-": deq
 
 violin:
+  path: "../../violin/bin/logchecker.rb"
   return:
     - pop
     - dequeue
