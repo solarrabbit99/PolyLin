@@ -1,0 +1,22 @@
+impl:
+  ms: queue
+  treiber: stack
+
+mappings:
+  stack:
+    "+": push
+    "-": pop
+  queue:
+    "+": enq
+    "-": deq
+
+violin:
+  return:
+    - pop
+    - dequeue
+  stack:
+    "push": "push"
+    "pop": "pop"
+  queue:
+    "enq": "enqueue"
+    "deq": "dequeue"
