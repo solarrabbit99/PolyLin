@@ -1,0 +1,13 @@
+# set
+remove 1 0 1 2
+contains 1 0 4 6
+insert 1 1 5 7
+contains 1 1 4 6
+insert 1 0 3 6
+remove 1 1 4 8
+remove 2 0 1 2
+contains 2 0 4 6
+insert 2 1 5 7
+contains 2 1 4 6
+insert 2 0 3 6
+remove 2 1 4 8

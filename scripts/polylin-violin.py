@@ -32,6 +32,8 @@ with open(srcFile, 'r') as src, open(dstFile, 'w') as dst:
     if line[0] == '#': continue
     methodPre, value, start_time, end_time = line.split()
     method = mapping[methodPre]
+    if value == '-1':
+      value = 'empty'
     if method in returnables:
       events.append((int(start_time), f'[{lineNo}] call {method}'))
       events.append((int(end_time), f'[{lineNo}] return {value}'))

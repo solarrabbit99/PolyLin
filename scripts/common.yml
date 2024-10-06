@@ -21,3 +21,9 @@ violin:
   queue:
     "enq": "enqueue"
     "deq": "dequeue"
+
+verilin:
+  path: "../../VeriLin/toolComparison/VeriLin"
+  stack:
+    "push": "push"
+    "pop": "pop"
