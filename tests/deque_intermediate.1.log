@@ -1,0 +1,17 @@
+# deque
+push_front 6 3 25
+peek_back 6 4 26
+pop_front 6 5 27
+push_front 7 6 28
+peek_back 7 7 29
+pop_front 7 8 30
+push_back 1 1 2
+push_front 2 9 10
+pop_back 1 11 12
+push_back 3 13 14
+pop_front 2 15 16
+push_front 4 17 18
+pop_back 3 19 20
+push_back 5 21 22
+pop_front 4 23 24
+pop_back 5 31 32

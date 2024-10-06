@@ -16,6 +16,9 @@ import time
 scal_filename = 'scal.tmp.log'
 polylin_filename = 'polylin.tmp.log'
 violin_filename = 'violin.tmp.log'
+verilin_filename = 'verilin.tmp.log'
+
+repeats = 10
 
 # num_oper must be divisible by 20
 def generate_history(num_oper: int, obj: str):
@@ -32,7 +35,7 @@ def run_test():
 
 def run_violin(max_steps):
   start_time = time.time()
-  executable = "../../violin/bin/logchecker.rb"
+  executable = config['violin']['path']
   cmd = executable + " " + violin_filename + " -a saturate -r -t 100 -s " + str(max_steps)
   proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
   proc.wait()
@@ -45,6 +48,15 @@ def run_violin(max_steps):
   result = [x[10:].strip() for x in output if x.startswith("VIOLATION:")][0] != "true"
   return (result, total_time, steps)
 
+def run_verilin(impl):
+  obj = config['impl'][impl]
+  start_time = time.time()
+  path = config['verilin']['path']
+  cmd = f'java -Xss1024m -Xmx100g -cp {path} lockfree{obj}.VeriLin 0 0 {verilin_filename} 0 0'
+  proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+  proc.wait()
+  return time.time() - start_time
+
 def main():
   parser = argparse.ArgumentParser('runtest', './runtest.py <object>', 'script for running test suite')
   parser.add_argument('object', help='object to test')
@@ -53,16 +65,18 @@ def main():
   with open('test_config.csv', 'r') as test_file:
     tests = [line.split(' ') for line in test_file.readlines()]
 
-  print('num_oper', 'result', 'runtime', 'violin-result', 'violin-runtime', 'violin-steps')
+  print('num_oper', 'result', 'runtime', 'violin-result', 'violin-runtime', 'violin-steps', 'verilin-runtime')
   for test in tests:
-    for _ in range(10):
+    for _ in range(repeats):
       num_oper = int(test[0])
       generate_history(num_oper, args.object)
       subprocess.Popen(f'./scal-polylin.py {scal_filename} {polylin_filename} {args.object}', shell=True).wait()
       subprocess.Popen(f'./polylin-violin.py {polylin_filename} {violin_filename}', shell=True).wait()
+      subprocess.Popen(f'./polylin-verilin.py {polylin_filename} {verilin_filename}', shell=True).wait()
       result, runtime = run_test()
       violin_result, violin_runtime, violin_steps = run_violin(num_oper*2)
-      print(num_oper, result, runtime, violin_result, violin_runtime, violin_steps)
+      verilin_runtime = run_verilin(args.object)
+      print(num_oper, result, runtime, violin_result, violin_runtime, violin_steps, verilin_runtime)
 
 if __name__ == '__main__':
   main()
