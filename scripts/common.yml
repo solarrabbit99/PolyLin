@@ -27,3 +27,6 @@ verilin:
   stack:
     "push": "push"
     "pop": "pop"
+  queue:
+    "enq": "enq"
+    "deq": "deq"

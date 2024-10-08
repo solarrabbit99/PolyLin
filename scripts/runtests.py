@@ -30,8 +30,9 @@ def generate_history(num_oper: int, obj: str):
 
 def run_test():
   start_time = time.time()
-  results = subprocess.Popen(f'../build/engine {polylin_filename}', shell=True, stdout=subprocess.PIPE).stdout.read()  
-  return (int(results.decode()), time.time() - start_time)
+  proc = subprocess.Popen(f'../build/engine {polylin_filename}', shell=True, stdout=subprocess.PIPE)
+  proc.wait()
+  return time.time() - start_time
 
 def run_violin(max_steps):
   start_time = time.time()
@@ -54,7 +55,10 @@ def run_verilin(impl):
   path = config['verilin']['path']
   cmd = f'java -Xss1024m -Xmx100g -cp {path} lockfree{obj}.VeriLin 0 0 {verilin_filename} 0 0'
   proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-  proc.wait()
+  try:
+    proc.wait(timeout=100)
+  except subprocess.TimeoutExpired:
+    proc.kill()
   return time.time() - start_time
 
 def main():
@@ -65,7 +69,7 @@ def main():
   with open('test_config.csv', 'r') as test_file:
     tests = [line.split(' ') for line in test_file.readlines()]
 
-  print('num_oper', 'result', 'runtime', 'violin-result', 'violin-runtime', 'violin-steps', 'verilin-runtime')
+  print('num_oper', 'runtime', 'violin-result', 'violin-runtime', 'violin-steps', 'verilin-runtime')
   for test in tests:
     for _ in range(repeats):
       num_oper = int(test[0])
@@ -73,10 +77,10 @@ def main():
       subprocess.Popen(f'./scal-polylin.py {scal_filename} {polylin_filename} {args.object}', shell=True).wait()
       subprocess.Popen(f'./polylin-violin.py {polylin_filename} {violin_filename}', shell=True).wait()
       subprocess.Popen(f'./polylin-verilin.py {polylin_filename} {verilin_filename}', shell=True).wait()
-      result, runtime = run_test()
+      runtime = run_test()
       violin_result, violin_runtime, violin_steps = run_violin(num_oper*2)
       verilin_runtime = run_verilin(args.object)
-      print(num_oper, result, runtime, violin_result, violin_runtime, violin_steps, verilin_runtime)
+      print(num_oper, runtime, violin_result, violin_runtime, violin_steps, verilin_runtime)
 
 if __name__ == '__main__':
   main()
