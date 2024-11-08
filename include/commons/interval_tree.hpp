@@ -4,6 +4,8 @@
 #include <set>
 #include <vector>
 
+#include "mem_alloc.hpp"
+
 namespace polylin {
 
 struct interval {
@@ -13,20 +15,20 @@ struct interval {
   interval() = default;
 };
 
+struct interval_tree_node {
+  interval intvl;
+  int maxEnd;
+  int height;
+  interval_tree_node* left;
+  interval_tree_node* right;
+
+  interval_tree_node(interval i)
+      : intvl(i), maxEnd(i.end), height(1), left(nullptr), right(nullptr) {}
+};
+
 // interval tree efficient O(log n) insert/delete of intervals and `O(m log n)`
 // point query
-struct interval_tree {
-  struct Node {
-    interval intvl;
-    int maxEnd;
-    int height;
-    Node* left;
-    Node* right;
-
-    Node(interval i)
-        : intvl(i), maxEnd(i.end), height(1), left(nullptr), right(nullptr) {}
-  };
-
+struct interval_tree : private memory_allocator<interval_tree_node> {
  public:
   interval_tree() : root(nullptr) {}
 
@@ -47,17 +49,19 @@ struct interval_tree {
   bool empty() { return root == nullptr; }
 
  private:
-  Node* root;
+  interval_tree_node* root;
 
-  int height(Node* n) { return n ? n->height : 0; }
+  int height(interval_tree_node* n) { return n ? n->height : 0; }
 
-  int maxEnd(Node* n) { return n ? n->maxEnd : -2147483648; }
+  int maxEnd(interval_tree_node* n) { return n ? n->maxEnd : -2147483648; }
 
-  int getBalance(Node* n) { return n ? height(n->left) - height(n->right) : 0; }
+  int getBalance(interval_tree_node* n) {
+    return n ? height(n->left) - height(n->right) : 0;
+  }
 
-  Node* rightRotate(Node* y) {
-    Node* x = y->left;
-    Node* T2 = x->right;
+  interval_tree_node* rightRotate(interval_tree_node* y) {
+    interval_tree_node* x = y->left;
+    interval_tree_node* T2 = x->right;
 
     x->right = y;
     y->left = T2;
@@ -73,9 +77,9 @@ struct interval_tree {
     return x;
   }
 
-  Node* leftRotate(Node* x) {
-    Node* y = x->right;
-    Node* T2 = y->left;
+  interval_tree_node* leftRotate(interval_tree_node* x) {
+    interval_tree_node* y = x->right;
+    interval_tree_node* T2 = y->left;
 
     y->left = x;
     x->right = T2;
@@ -91,7 +95,7 @@ struct interval_tree {
     return y;
   }
 
-  Node* autoBalance(Node* node) {
+  interval_tree_node* autoBalance(interval_tree_node* node) {
     int balance = getBalance(node);
     if (balance >= 2) {                  // left heavy
       if (getBalance(node->left) == -1)  // left child is right heavy
@@ -106,8 +110,8 @@ struct interval_tree {
     return node;
   }
 
-  Node* insert(Node* node, interval i) {
-    if (!node) return new Node(i);
+  interval_tree_node* insert(interval_tree_node* node, interval i) {
+    if (!node) return new (alloc()) interval_tree_node(i);
 
     if (i.start < node->intvl.start)
       node->left = insert(node->left, i);
@@ -121,12 +125,12 @@ struct interval_tree {
     return autoBalance(node);
   }
 
-  Node* minValueNode(Node* node) {
+  interval_tree_node* minValueNode(interval_tree_node* node) {
     while (node->left != nullptr) node = node->left;
     return node;
   }
 
-  Node* remove(Node* node, interval i) {
+  interval_tree_node* remove(interval_tree_node* node, interval i) {
     if (!node) return node;
 
     if (i.start < node->intvl.start) {
@@ -135,11 +139,11 @@ struct interval_tree {
       node->right = remove(node->right, i);
     } else {
       if (!node->left || !node->right) {
-        Node* temp = node->left ? node->left : node->right;
-        delete node;
+        interval_tree_node* temp = node->left ? node->left : node->right;
+        free(node);
         node = temp;
       } else {
-        Node* temp = minValueNode(node->right);
+        interval_tree_node* temp = minValueNode(node->right);
         node->intvl = temp->intvl;
         node->right = remove(node->right, temp->intvl);
       }
@@ -154,7 +158,8 @@ struct interval_tree {
     return autoBalance(node);
   }
 
-  void query(Node* node, int point, std::vector<interval>& result) {
+  void query(interval_tree_node* node, int point,
+             std::vector<interval>& result) {
     if (!node) return;
 
     if (node->intvl.start <= point && point <= node->intvl.end)
