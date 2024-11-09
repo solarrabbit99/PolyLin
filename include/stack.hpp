@@ -61,22 +61,22 @@ class StackLin : private LinBase<value_type> {
 
     while (!ops.empty()) {
       // find empty points, clear overlapping oper_ts
-      std::pair<int, int> pr = critIntervals.query_min(0, 2 * n - 2);
+      std::pair<int, int> pr = critIntervals.query_min();
       while (pr.first == 0) {
         time_type pos = pr.second;
         removeOverlap(ops, pos);
         critIntervals.update_range(pos, pos, 2 * n);  // 2*n is a sentinel value
-        pr = critIntervals.query_min(0, 2 * n - 2);
+        pr = critIntervals.query_min();
       }
 
       // find single layer interval points and value, clear overlapping oper_ts
       while (pr.first == 1) {
         time_type pos = pr.second;
-        value_type val = critIntervals2.query_min(pos, pos).first;
+        value_type val = critIntervals2.query_val(pos);
         removeOverlap(opByVal[val], pos);
         critIntervals.update_range(pos, pos, 2 * n);  // 2*n is a sentinel value
         pointsByLastVal[val].push_back(pos);
-        pr = critIntervals.query_min(0, 2 * n - 2);
+        pr = critIntervals.query_min();
       }
 
       if (clearedVals.empty()) return false;
