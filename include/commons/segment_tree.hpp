@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <climits>
 #include <vector>
 
 namespace polylin {
