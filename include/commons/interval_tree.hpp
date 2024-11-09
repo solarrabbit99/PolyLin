@@ -1,7 +1,5 @@
 #pragma once
 
-#include <climits>
-#include <set>
 #include <vector>
 
 #include "mem_alloc.hpp"
@@ -53,7 +51,7 @@ struct interval_tree : private memory_allocator<interval_tree_node> {
 
   int height(interval_tree_node* n) { return n ? n->height : 0; }
 
-  int maxEnd(interval_tree_node* n) { return n ? n->maxEnd : -2147483648; }
+  int maxEnd(interval_tree_node* n) { return n ? n->maxEnd : INT32_MIN; }
 
   int getBalance(interval_tree_node* n) {
     return n ? height(n->left) - height(n->right) : 0;
