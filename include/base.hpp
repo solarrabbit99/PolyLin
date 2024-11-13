@@ -18,6 +18,32 @@ class LinBase {
  public:
   virtual bool distVal(hist_t& hist) = 0;
 
+  hist_t getSubHist(const hist_t& hist, time_type time) {
+    hist_t subhist;
+    std::unordered_set<value_type> removeOps, allOps;
+    for (const auto& o : hist)
+      if (o.endTime <= time) {
+        subhist.emplace(o);
+        if (o.value != EMPTY_VALUE) {
+          allOps.insert(o.value);
+          if (removes.count(o.method)) removeOps.insert(o.value);
+        }
+      }
+
+    for (auto o : hist)
+      if (o.startTime < time && time < o.endTime && allOps.count(o.value)) {
+        o.endTime = time + 3;
+        if (removes.count(o.method)) removeOps.insert(o.value);
+        subhist.emplace(std::move(o));
+      }
+
+    for (const value_type& value : allOps) {
+      if (!removeOps.count(value))
+        subhist.emplace(*removes.begin(), value, time + 1, time + 2, true);
+    }
+    return subhist;
+  }
+
  protected:
   LinBase(const std::vector<Method>&& adds, const std::vector<Method>&& removes)
       : adds(adds.begin(), adds.end()),
