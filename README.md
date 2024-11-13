@@ -33,7 +33,7 @@ pop 1 7 8
 
 ### Options
 
-- `-i`: incremental mode, report time where violation is first observed, -1 if no violation is observed
+- `-i`: incremental mode, report time where violation is first observed, $-1$ if no violation is observed
 - `-t`: report time taken in seconds
 
 ### Output
@@ -41,7 +41,7 @@ pop 1 7 8
 The standard output shall be in the form:
 
 ```
-"%d %f %f\n", <linearizability>, <time of violation>, <time taken>
+"%d %d %f\n", <linearizability>, <time of violation>, <time taken>
 ```
 
 _linearizability_ prints `1` when input history is linearizable, `0` otherwise.
