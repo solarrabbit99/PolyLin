@@ -15,6 +15,9 @@ class LinBase {
   typedef Operation<value_type> oper_t;
   typedef History<value_type> hist_t;
 
+ public:
+  virtual bool distVal(hist_t& hist) = 0;
+
  protected:
   LinBase(const std::vector<Method>&& adds, const std::vector<Method>&& removes)
       : adds(adds.begin(), adds.end()),

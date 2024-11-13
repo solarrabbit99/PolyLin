@@ -5,7 +5,7 @@
 namespace polylin {
 
 template <typename value_type>
-class SetLin : LinBase<value_type> {
+class SetLin : public LinBase<value_type> {
   typedef Operation<value_type> oper_t;
   typedef History<value_type> hist_t;
 

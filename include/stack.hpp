@@ -12,7 +12,7 @@
 namespace polylin {
 
 template <typename value_type>
-class StackLin : private LinBase<value_type> {
+class StackLin : public LinBase<value_type> {
   typedef Operation<value_type> oper_t;
   typedef History<value_type> hist_t;
 
