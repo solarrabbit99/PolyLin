@@ -74,22 +74,24 @@ int main(int argc, char* argv[]) {
   std::cout << result;
 
   if (incremental) {
-    if (result) std::cout << " -1";
+    if (result) {
+      std::cout << " -1";
+    } else {
+      // pseudo polynomial binary search
+      // TODO can be optimized to fully polynomial
+      time_type low = 0, high = get_max_time(hist_copy);
+      while (low < high) {
+        time_type mid = low + (high - low) / 2;
+        hist_t subhist = monitor->getSubHist(hist_copy, mid);
+        result = monitor->distVal(subhist);
+        if (result)
+          low = mid + 1;
+        else
+          high = mid;
+      }
 
-    // pseudo polynomial binary search
-    // TODO can be optimized to fully polynomial
-    time_type low = 0, high = get_max_time(hist_copy);
-    while (low < high) {
-      time_type mid = low + (high - low) / 2;
-      hist_t subhist = monitor->getSubHist(hist_copy, mid);
-      result = monitor->distVal(subhist);
-      if (result)
-        low = mid + 1;
-      else
-        high = mid;
+      std::cout << " " << low;
     }
-
-    std::cout << " " << low;
   }
 
   if (print_time) std::cout << " " << (time_micros / 1e6);
