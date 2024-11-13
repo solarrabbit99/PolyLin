@@ -24,10 +24,13 @@ std::unique_ptr<LinBase<value_type>> get_monitor(const std::string& type) {
 }
 
 template <typename value_type>
-time_type get_max_time(const History<value_type>& hist) {
-  time_type max_time = MIN_TIME;
-  for (const auto& o : hist) max_time = std::max(max_time, o.endTime);
-  return max_time;
+std::vector<time_type> get_times(const History<value_type>& hist) {
+  std::set<time_type> times;
+  for (const auto& o : hist) {
+    times.insert(o.startTime);
+    times.insert(o.endTime);
+  }
+  return {times.begin(), times.end()};
 }
 
 typedef std::unique_ptr<LinBase<DEFAULT_VALUE_TYPE>> monitor_ptr_t;
@@ -77,12 +80,11 @@ int main(int argc, char* argv[]) {
     if (result) {
       std::cout << " -1";
     } else {
-      // pseudo polynomial binary search
-      // TODO can be optimized to fully polynomial
-      time_type low = 0, high = get_max_time(hist_copy);
+      auto times = get_times(hist_copy);
+      time_type low = 0, high = times.size() - 1;
       while (low < high) {
         time_type mid = low + (high - low) / 2;
-        hist_t subhist = monitor->getSubHist(hist_copy, mid);
+        hist_t subhist = monitor->getSubHist(hist_copy, times[mid]);
         result = monitor->distVal(subhist);
         if (result)
           low = mid + 1;
@@ -90,7 +92,7 @@ int main(int argc, char* argv[]) {
           high = mid;
       }
 
-      std::cout << " " << low;
+      std::cout << " " << times[low];
     }
   }
 
