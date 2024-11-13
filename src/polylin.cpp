@@ -74,6 +74,8 @@ int main(int argc, char* argv[]) {
   std::cout << result;
 
   if (incremental) {
+    if (result) std::cout << " -1";
+
     // pseudo polynomial binary search
     // TODO can be optimized to fully polynomial
     time_type low = 0, high = get_max_time(hist_copy);
