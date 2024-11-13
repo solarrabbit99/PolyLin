@@ -7,12 +7,12 @@ project(PolyLin VERSION 1.0 LANGUAGES CXX)
 
 # main engine
 set(SOURCE
-  "src/engine.cpp"
+  "src/polylin.cpp"
 )
 
-add_executable(engine ${SOURCE})
+add_executable(polylin ${SOURCE})
 
-target_include_directories(engine PRIVATE "include")
+target_include_directories(polylin PRIVATE "include")
 
 # priority queue simulator
 set(SOURCE
