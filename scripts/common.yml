@@ -23,10 +23,14 @@ violin:
     "deq": "dequeue"
 
 verilin:
-  path: "../../VeriLin/toolComparison/VeriLin"
+  path: "../../toolComparison/VeriLin"
   stack:
     "push": "push"
     "pop": "pop"
   queue:
     "enq": "enq"
     "deq": "deq"
+  pqueue:
+    "insert": "offer"
+    "poll": "poll"
+    "peek": "peek"
