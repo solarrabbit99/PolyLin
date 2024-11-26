@@ -10,6 +10,7 @@ with open(dir_path + "/common.yml") as file:
   config = yaml.safe_load(file)
 
 import argparse
+import signal
 import subprocess
 
 scal_filename = 'scal.tmp.log'
@@ -43,14 +44,16 @@ def remove_empties(src: str, dst: str):
 
 def run_test_cmd(cmd: list[str]):
   full_cmd = cmd_prefix + cmd
+  proc = subprocess.Popen(full_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
   try:
-    proc = subprocess.run(full_cmd, timeout=100, capture_output=True)
+    proc.wait(timeout=100)
   except subprocess.TimeoutExpired:
+    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     return (-1, 100)
   with open(test_log, 'a') as log:
     log.write('Running command: ' + ' '.join(full_cmd) + '\n')
-    log.write(proc.stdout.decode())
-  return proc.stderr.decode().split('\n')[0][1:-1].split()
+    log.write(proc.stdout.read().decode())
+  return proc.stderr.read().decode().split('\n')[0][1:-1].split()
 
 def run_polylin():
   return run_test_cmd(['../build/polylin', polylin_filename])
