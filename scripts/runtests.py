@@ -20,7 +20,7 @@ verilin_filename = 'verilin.tmp.log'
 
 test_log = 'runtests.log'
 
-cmd_prefix = '/usr/bin/time -f "%M %e" '
+cmd_prefix = ['/usr/bin/time', '-f', '"%M %e"']
 
 repeats = 10
 
@@ -41,33 +41,28 @@ def remove_empties(src: str, dst: str):
       if line.split()[1] == '0': continue
       dst_file.write(line)
 
-def run_test_cmd(cmd: str):
+def run_test_cmd(cmd: list[str]):
   full_cmd = cmd_prefix + cmd
-  proc = subprocess.Popen(full_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   try:
-    proc.wait(timeout=100)
+    proc = subprocess.run(full_cmd, timeout=100, capture_output=True)
   except subprocess.TimeoutExpired:
-    proc.kill()
     return (-1, 100)
-  output = proc.stdout.read().decode()
   with open(test_log, 'a') as log:
-    log.write(full_cmd + '\n')
-    log.write(output)
-  return output.split('\n')[-2].split()
+    log.write('Running command: ' + ' '.join(full_cmd) + '\n')
+    log.write(proc.stdout.decode())
+  return proc.stderr.decode().split('\n')[0][1:-1].split()
 
 def run_polylin():
-  return run_test_cmd(f'../build/polylin {polylin_filename}')
+  return run_test_cmd(['../build/polylin', polylin_filename])
 
 def run_violin():
   executable = config['violin']['path']
-  cmd = executable + " " + violin_filename + " -a saturate -r"
-  return run_test_cmd(cmd)
+  return run_test_cmd([executable, violin_filename, "-a", "saturate", "-r"])
 
 def run_verilin(impl):
   obj = config['impl'][impl]
   path = config['verilin']['path']
-  cmd = f'java -Xss1024m -Xmx100g -cp {path} lockfree{obj}.VeriLin 0 0 {verilin_filename} 0 0'
-  return run_test_cmd(cmd)
+  return run_test_cmd(['java', '-Xss1024m', '-Xmx100g', '-cp', path, f'lockfree{obj}.VeriLin', '0', '0', verilin_filename, '0', '0'])
 
 def main():
   parser = argparse.ArgumentParser('runtest', './runtest.py <object>', 'script for running test suite')
